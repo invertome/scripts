@@ -1,26 +1,25 @@
 # USAGE: python correct_newick.py -i input_file.tre -o output_file.tre
 
-import re
 import argparse
 from io import StringIO
 from Bio import Phylo
 
+def collapse_single_child_nodes(tree):
+    for clade in tree.find_clades():
+        if len(clade.clades) == 1:
+            clade.clades[0].branch_length += clade.branch_length
+            clade.clades = clade.clades[0].clades
+            clade.name = clade.clades[0].name
+            clade.confidence = clade.clades[0].confidence
+    return tree
+
 def correct_newick_tree(input_file, output_file):
-    # Read the input Newick tree file
-    with open(input_file, 'r') as f:
-        tree_string = f.read()
-
-    # Find and correct redundant double-brackets
-    corrected_tree_string = re.sub(r'\(\(([^\(\)]+)\)\)', r'(\1)', tree_string)
-
-    # Check if any more redundant double-brackets are found and correct them
-    while re.search(r'\(\(([^\(\)]+)\)\)', corrected_tree_string):
-        corrected_tree_string = re.sub(r'\(\(([^\(\)]+)\)\)', r'(\1)', corrected_tree_string)
-
     try:
-        # Parse the original and corrected Newick trees
+        # Parse the original Newick tree
         original_tree = Phylo.read(input_file, 'newick')
-        corrected_tree = Phylo.read(StringIO(corrected_tree_string), 'newick')
+
+        # Collapse nodes with a single child
+        corrected_tree = collapse_single_child_nodes(original_tree)
 
         # Write the corrected tree to the output file
         Phylo.write(corrected_tree, output_file, 'newick')
@@ -39,3 +38,4 @@ args = parser.parse_args()
 
 # Call the correct_newick_tree function with the specified input and output file paths
 correct_newick_tree(args.input, args.output)
+
