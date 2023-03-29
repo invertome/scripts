@@ -2,6 +2,7 @@
 
 import re
 import argparse
+from io import StringIO
 from Bio import Phylo
 
 def correct_newick_tree(input_file, output_file):
