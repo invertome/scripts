@@ -4,22 +4,26 @@ import re
 import argparse
 from ete3 import Tree
 
-def custom_tree_parser(newick_string):
-    newick_string = re.sub(r'(?<=\))(?=:\d+\.\d+)', 'missing_name', newick_string)
-    return Tree(newick_string)
+def add_missing_node_names(newick_string):
+    counter = 1
+    while re.search(r'(?<=\))(?=:\d+\.\d+)', newick_string):
+        newick_string = re.sub(r'(?<=\))(?=:\d+\.\d+)', f'_missing_node_{counter}', newick_string, count=1)
+        counter += 1
+    return newick_string
 
 def correct_newick_tree(input_file, output_file):
     with open(input_file, 'r') as f:
         tree_string = f.read()
 
+    tree_string = add_missing_node_names(tree_string)
     corrected_tree_string = re.sub(r'\(\(([^\(\)]+)\)\)', r'(\1)', tree_string)
 
     while re.search(r'\(\(([^\(\)]+)\)\)', corrected_tree_string):
         corrected_tree_string = re.sub(r'\(\(([^\(\)]+)\)\)', r'(\1)', corrected_tree_string)
 
     try:
-        original_tree = custom_tree_parser(tree_string)
-        corrected_tree = custom_tree_parser(corrected_tree_string)
+        original_tree = Tree(tree_string)
+        corrected_tree = Tree(corrected_tree_string)
 
         if original_tree.robinson_foulds(corrected_tree, unrooted_trees=True)[0] == 0:
             with open(output_file, 'w') as f:
@@ -38,3 +42,4 @@ parser.add_argument('-o', '--output', type=str, required=True, help='Path to cor
 args = parser.parse_args()
 
 correct_newick_tree(args.input, args.output)
+
