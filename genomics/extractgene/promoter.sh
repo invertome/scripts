@@ -104,7 +104,7 @@ cat "${infile[@]}" | tr '\r' '\n' | grep -v '^$' | \
     $AWK -v DIR
 # Read input
 cat "${infile[@]}" | tr '\r' '\n' | grep -v '^$' | \
-    $AWK -v DIR="$PROMTMP/data" -f "$PROM/bin/fasta2dir"
+    $AWK -v "DIR=$PROMTMP/data" -f "$PROM/bin/fasta2dir"
 
 cd "$PROM"
 
