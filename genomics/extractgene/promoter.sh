@@ -1,68 +1,43 @@
 #!/bin/bash
 
-###############################################################################
-# GENERAL SETTINGS, CUSTOMIZE
-###############################################################################
-
-# Full path to promoter directory
-PROM="/home/user/bin/promoter-2.0"
-
-# Determine platform (do not change this unless you don't have 'uname'!)
-SYSTEM=$(uname -s)
-
-# Select AWK executable
-case $SYSTEM in
-    "IRIX" | "IRIX64" | "AIX" | "OSF1" | "SunOS" )
-        AWK="/usr/bin/nawk"
-        ;;
-    "Linux" )
-        AWK="/usr/bin/gawk"
-        ;;
-    *)
-        AWK="mysuperawk"
-        ;;
-esac
+# General settings, customize
+PROM="/home/yourusername/bin/promoter-2.0"
+SYSTEM="$(uname -s)"
 
 # Select ECHO executable (avoid shell built-in)
-if [ $SYSTEM == "Linux" ]; then
+if [ "$SYSTEM" == "Linux" ]; then
     ECHO="/bin/echo -e"
 else
     ECHO="/bin/echo"
 fi
-
-###############################################################################
-# NOTHING SHOULD NEED CHANGING BELOW THIS LINE!
-###############################################################################
-
-VER="2.0a"
-VERDATE="May 2001, revised in Aug 2004"
 
 # Parse command line
 infile=()
 f_opt=""
 w_opt=""
 V_opt=""
-for w in "$@"
-do
-    case $w in
-        "-f")
-            f_opt="1"
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        -f)
+            f_opt="yes"
             ;;
-        "-w")
-            w_opt="1"
+        -w)
+            w_opt="yes"
             ;;
-        "-V")
-            V_opt="1"
+        -V)
+            V_opt="yes"
             ;;
         *)
-            infile+=("$w")
+            infile+=("$1")
             ;;
     esac
+    shift
 done
 
 # Display version info
 if [ -n "$V_opt" ]; then
-    $ECHO "promoter $VER, $VERDATE"
+    $ECHO "promoter 2.0a, May 2001, revised in Aug 2004"
     exit 0
 fi
 
@@ -80,38 +55,19 @@ for f in "${infile[@]}"; do
     fi
 done
 
-# Define header flanks
-if [ -n "$w_opt" ]; then
-    l="<h3>"
-    r="</h3>"
-else
-    l="\n\n"
-    r="\n"
-fi
-
-if [ -n "$f_opt" ] && [ -n "$w_opt" ]; then
-    x="<h3>"
-else
-    x="$l"
-fi
-
 # Prepare for temporary files
 PROMTMP="$PROM/tmp/$$"
 mkdir -p "$PROMTMP/data_in" "$PROMTMP/data_out"
 
 # Read input
-cat "${infile[@]}" | tr '\r' '\n' | grep -v '^$' | \
-    while read -r line; do
-        if [[ $line == ">"* ]]; then
-            header=${line#>}
-            out_file="$PROMTMP/data_in/$header"
-        else
-            echo "$line" >> "$out_file"
-        fi
-    done
+for f in "${infile[@]}"; do
+    {
+        echo "$f" | grep -E '^>'
+        grep -v -E '^>' "$f"
+    } > "$PROMTMP/data_in/$(basename "$f")"
+done
 
 cd "$PROM"
-
 
 # Main
 if [ -n "$w_opt" ]; then
@@ -119,23 +75,24 @@ if [ -n "$w_opt" ]; then
 fi
 
 for f in "$PROMTMP/data_in/"*; do
-    cat "$f" | "$PROM/bin/promoter_$SYSTEM" >"$PROMTMP/data_out/${f##*/}.pred"
+    cat "$f" | "$PROM/bin/promoter_$SYSTEM" >"$PROMTMP/data_out/$(basename "$f").pred"
 
     if [ -n "$f_opt" ]; then
-        $ECHO "${l}INPUT SEQUENCE:$r"
+        $ECHO "INPUT SEQUENCE:"
         cat "$f"
 
         if [ -n "$w_opt" ]; then
-            $ECHO "${l}PREDICTED TRANSCRIPTION START SITES:$r"
+            $ECHO "PREDICTED TRANSCRIPTION START SITES:"
         else
-            $ECHO "${l}PREDICTED TRANSCRIPTION START SITES:"
+            $ECHO "PREDICTED TRANSCRIPTION START SITES:"
         fi
     fi
 
-    cat "$PROMTMP/data_out/${f##*/}.pred" | \
-        $AWK -v LEN=$(cat "$PROMTMP/data_out/${f##*/}") -v L="$x" -v R="$r" \
-             -v LIN=$(cat "$PROMTMP/data_out/${f##*/}.pred" | wc -l) \
-             -f "$PROM/bin/pp"
+    cat "$PROMTMP/data_out/$(basename "$f").pred" | \
+    while read -r line; do
+        echo "$line"
+    done
+
 done
 
 if [ -n "$w_opt" ]; then
