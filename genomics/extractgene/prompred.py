@@ -1,0 +1,85 @@
+import os
+import sys
+import argparse
+import subprocess
+from Bio import SeqIO
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
+
+def parse_fasta(file_path):
+    """
+    Parse a FASTA file and return a list of sequences.
+
+    :param file_path: Path to the FASTA file
+    :return: List of SeqRecords
+    """
+    with open(file_path, 'r') as fasta_file:
+        return list(SeqIO.parse(fasta_file, 'fasta'))
+
+def predict_promoter_regions(sequence, motif_file):
+    """
+    Use FIMO to predict promoter regions in the given sequence based on the provided motif file.
+
+    :param sequence: A SeqRecord object containing the sequence to analyze
+    :param motif_file: Path to the motif file
+    :return: List of (start, end) tuples representing promoter regions
+    """
+    # Write the sequence to a temporary FASTA file
+    with open("temp_sequence.fasta", "w") as temp_file:
+        SeqIO.write(sequence, temp_file, "fasta")
+
+    # Run FIMO with the specified motif file and the temporary FASTA file
+    subprocess.run([
+        "fimo",
+        "--thresh", "0.0001",
+        "--oc", "fimo_out",
+        motif_file,
+        "temp_sequence.fasta"
+    ])
+
+    os.remove("temp_sequence.fasta")
+
+    # Parse the FIMO output and extract the promoter regions
+    promoter_regions = []
+    with open("fimo_out/fimo.tsv", "r") as fimo_output_file:
+        next(fimo_output_file)  # Skip the header
+        for line in fimo_output_file:
+            _, start, end, *_ = line.strip().split("\t")
+            promoter_regions.append((int(start), int(end)))
+
+    return promoter_regions
+
+def write_promoter_fasta(sequences, output_path):
+    """
+    Write a FASTA file containing the promoter sequences.
+
+    :param sequences: List of SeqRecords containing promoter sequences
+    :param output_path: Path to the output FASTA file
+    """
+    with open(output_path, "w") as output_file:
+        for seq in sequences:
+            SeqIO.write(seq, output_file, "fasta")
+
+if __name__ == "__main__":
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-i", "--input", help="Path to the input FASTA file", required=True)
+    parser.add_argument("-o", "--output", help="Path to the output directory", required=True)
+    parser.add_argument("-m", "--motif", help="Path to the motif file", required=True)
+    args = parser.parse_args()
+
+    # Load sequences from the input FASTA file
+    sequences = parse_fasta(args.input)
+
+    # Predict and extract promoter regions for each sequence
+    promoter_sequences = []
+    for seq in sequences:
+        promoter_regions = predict_promoter_regions(seq, args.motif)
+        for start, end in promoter_regions:
+            promoter_seq = SeqRecord(seq.seq[start:end], id=f"{seq.id}_promoter", description=f"Promoter region for {seq.id}")
+            promoter_sequences.append(promoter_seq)
+
+    # Write the promoter sequences to the output FASTA file
+    output_fasta = os.path.join(args.output, "promoter_sequences.fasta")
+    os.makedirs(args.output, exist_ok=True)
+    write_promoter_fasta(promoter_sequences, output_fasta)
