@@ -101,12 +101,17 @@ mkdir -p "$PROMTMP/data_in" "$PROMTMP/data_out"
 
 # Read input
 cat "${infile[@]}" | tr '\r' '\n' | grep -v '^$' | \
-    $AWK -v DIR
-# Read input
-cat "${infile[@]}" | tr '\r' '\n' | grep -v '^$' | \
-    $AWK -F "=" -v "DIR=$PROMTMP/data" -f "$PROM/bin/fasta2dir"
+    while read -r line; do
+        if [[ $line == ">"* ]]; then
+            header=${line#>}
+            out_file="$PROMTMP/data_in/$header"
+        else
+            echo "$line" >> "$out_file"
+        fi
+    done
 
 cd "$PROM"
+
 
 # Main
 if [ -n "$w_opt" ]; then
