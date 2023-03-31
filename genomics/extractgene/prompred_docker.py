@@ -123,7 +123,7 @@ def draw_sequence_graphics(sequences, promoter_regions_list, output_path):
                 sequence = seq[start:end]
                 legend_text = String(30, legend_y, f"Motif {i+1} ({seq_id}): {sequence.seq}", textAnchor="start", fontSize=12, fillColor=colors.black)
                 legend_box = BoxSymbol(10, legend_y, 20, 12, color=colors.black)
-                box_feature = gd_diagram.Feature(sequence.seq, custom_symbol=legend_box, location=FeatureLocation(0, 1))
+                box_feature = SeqFeature(FeatureLocation(0, 1), type=sequence.seq, qualifiers={"custom_symbol": legend_box})
                 legend_set.add_feature(box_feature)
                 legend_y += 20
 
