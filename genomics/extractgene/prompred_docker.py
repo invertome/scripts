@@ -2,6 +2,7 @@ import os
 import sys
 import argparse
 import subprocess
+import shutil
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
@@ -16,7 +17,7 @@ def parse_fasta(file_path):
     with open(file_path, 'r') as fasta_file:
         return list(SeqIO.parse(fasta_file, 'fasta'))
 
-def predict_promoter_regions(sequence, motif_file):
+def predict_promoter_regions(sequence, motif_file, threshold):
     """
     Use FIMO in a Docker container to predict promoter regions in the given sequence based on the provided motif file.
 
@@ -33,7 +34,7 @@ def predict_promoter_regions(sequence, motif_file):
         "docker", "run", "-v", f"{os.getcwd()}:/home/meme",
         "memesuite/memesuite",
         "fimo",
-        "--thresh", "0.0001",
+        "--thresh", str(threshold),
         "--oc", "/home/meme/fimo_out",
         "/home/meme/" + motif_file,
         "/home/meme/temp_sequence.fasta"
@@ -75,6 +76,7 @@ if __name__ == "__main__":
     parser.add_argument("-i", "--input", help="Path to the input FASTA file", required=True)
     parser.add_argument("-o", "--output", help="Path to the output directory", required=True)
     parser.add_argument("-m", "--motif", help="Path to the motif file", required=True)
+    parser.add_argument("-t", "--threshold", help="FIMO threshold value", required=True, type=float)
     args = parser.parse_args()
 
     # Load sequences from the input FASTA file
@@ -85,10 +87,10 @@ if __name__ == "__main__":
     for seq in sequences:
         promoter_regions = predict_promoter_regions(seq, args.motif)
         for start, end in promoter_regions:
-            promoter_seq = SeqRecord(seq.seq[start:end], id=f"{seq.id}_promoter", description=f"Promoter region for {seq.id}")
+            promoter_seq = SeqRecord(seq.seq[start:end], id=f"{seq.id}_motif_{start}-{end}", description=f"Motif in promoter region for {seq.id}")
             promoter_sequences.append(promoter_seq)
 
     # Write the promoter sequences to the output FASTA file
-    output_fasta = os.path.join(args.output, "promoter_sequences.fasta")
+    output_fasta = os.path.join(args.output, "motif_sequences.fasta")
     os.makedirs(args.output, exist_ok=True)
     write_promoter_fasta(promoter_sequences, output_fasta)
