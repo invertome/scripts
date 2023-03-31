@@ -69,22 +69,17 @@ def predict_promoter_regions(sequence, motif_file, threshold):
 
     os.remove("temp_sequence.fasta")
 
-
-    # Parse the FIMO output and extract the promoter regions
     promoter_regions = []
-    with open("fimo_out/fimo.tsv", "r") as fimo_output_file:
+
+    with open(os.path.join(fimo_output_path, "fimo.tsv"), "r") as fimo_output_file:
+        fimo_output_file.readline()  # Skip header
         for line in fimo_output_file:
-            # Skip comments and headers
-            if line.startswith("#") or line.startswith("pattern") or line.startswith("motif_id"):
-                continue
-
-            values = line.strip().split("\t")
-            if len(values) >= 5:
-                _, _, _, start, end, *_ = values
-                promoter_regions.append((int(start), int(end)))
-
+            columns = line.strip().split("\t")
+            start, end = int(columns[3]) - 1, int(columns[4])
+            promoter_regions.append((start, end))
 
     return promoter_regions
+
 
 def write_promoter_fasta(sequences, output_path):
     """
