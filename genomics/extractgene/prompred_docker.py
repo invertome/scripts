@@ -95,10 +95,14 @@ def draw_sequence_graphics(sequences, promoter_regions_list, output_path):
                         start=0, end=len(sequence))
 
         # Add legend
-        legend_y = 650
-        for i, (start, end) in enumerate(promoter_regions):
-            gd_diagram.add_text(f"Motif {i+1}: {sequence.seq[start:end]}", (10, legend_y), font_size=12, color=colors.black)
-            legend_y -= 20
+        legend_track = gd_diagram.new_track(1, name="Legend", start=0, end=max_len)
+        legend_set = legend_track.new_set()
+        for i, (seq_id, start, end) in enumerate(promoter_regions):
+            text = f"Motif {i+1}: {sequences_by_id[seq_id].seq[start:end]}"
+            text_path = TextPath((10, legend_y), text, font_size=12, color=colors.black)
+            legend_set.add_feature(text_path)
+            legend_y -= 15
+
 
         # Save diagram as a PDF
         gd_diagram.write(os.path.join(output_path, f"{sequence.id}_diagram_{idx}.pdf"), "PDF")
