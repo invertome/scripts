@@ -6,6 +6,9 @@ import shutil
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
+from Bio.Graphics import GenomeDiagram
+from reportlab.lib import colors
+from reportlab.lib.units import cm
 
 def parse_fasta(file_path):
     """
@@ -69,6 +72,21 @@ def write_promoter_fasta(sequences, output_path):
     with open(output_path, "w") as output_file:
         for seq in sequences:
             SeqIO.write(seq, output_file, "fasta")
+            
+def draw_sequence_graphics(sequences, promoter_regions, output_path):
+    gd_diagram = GenomeDiagram.Diagram("Promoter regions & Motifs")
+    max_len = max([len(seq) for seq in sequences])
+
+    for i, (seq, regions) in enumerate(zip(sequences, promoter_regions)):
+        gd_track = gd_diagram.new_track(i + 1, greytrack=True, start=0, end=len(seq), scale_ticks=1, scale_smalltick_interval=1000, name=seq.id)
+        gd_feature_set = gd_track.new_set()
+
+        for start, end in regions:
+            feature = SeqFeature(FeatureLocation(start, end), strand=1)
+            gd_feature_set.add_feature(feature, color=colors.red, label=True, label_position="start", label_size=8)
+
+    gd_diagram.draw(format="linear", pagesize="A4", fragments=1, start=0, end=max_len)
+    gd_diagram.write(output_path, "pdf")
 
 if __name__ == "__main__":
     # Parse command-line arguments
@@ -84,13 +102,19 @@ if __name__ == "__main__":
 
     # Predict and extract promoter regions for each sequence
     promoter_sequences = []
+    all_promoter_regions = []  # Added to store promoter regions for drawing graphics
     for seq in sequences:
         promoter_regions = predict_promoter_regions(seq, args.motif, args.threshold)
+        all_promoter_regions.append(promoter_regions)  # Store promoter regions
         for start, end in promoter_regions:
-            promoter_seq = SeqRecord(seq.seq[start:end], id=f"{seq.id}_motif_{start}-{end}", description=f"Motif in promoter region for {seq.id}")
+            promoter_seq = SeqRecord(seq.seq[start:end], id=f"{seq.id}_motif_{start}-{end}", description=f"Motif in promoter region for {seq.id} at position {start}-{end}")
             promoter_sequences.append(promoter_seq)
 
     # Write the promoter sequences to the output FASTA file
     output_fasta = os.path.join(args.output, "motif_sequences.fasta")
     os.makedirs(args.output, exist_ok=True)
     write_promoter_fasta(promoter_sequences, output_fasta)
+    
+    # Draw sequence graphics and save as a PDF file
+    output_graphics = os.path.join(args.output, "promoter_regions_graphics.pdf")
+    draw_sequence_graphics(sequences, all_promoter_regions, output_graphics)
