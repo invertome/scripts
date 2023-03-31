@@ -9,11 +9,26 @@ from Bio.SeqRecord import SeqRecord
 from Bio.SeqFeature import SeqFeature, FeatureLocation
 from Bio.Graphics import GenomeDiagram
 from Bio.Graphics.GenomeDiagram import CrossLink
-from Bio.Graphics.GenomeDiagram._Feature import SigilBox
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib.units import cm
 from reportlab.graphics.shapes import String
+
+class BoxSymbol:
+    def __init__(self, x, y, width, height, color):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.color = color
+
+    def __call__(self, gd_diagram, gd_track, gd_set, start, end, strand, **kwargs):
+        from reportlab.lib import colors
+        from reportlab.graphics.shapes import Rect
+
+        box = Rect(self.x, self.y, self.width, self.height, fillColor=self.color)
+        gd_set.add(box)
+
 
 def parse_fasta(file_path):
     """
@@ -107,7 +122,7 @@ def draw_sequence_graphics(sequences, promoter_regions_list, output_path):
                 seq_id = seq.id
                 sequence = seq[start:end]
                 legend_text = String(30, legend_y, f"Motif {i+1} ({seq_id}): {sequence.seq}", textAnchor="start", fontSize=12, fillColor=colors.black)
-                legend_box = SigilBox(10, legend_y, 20, legend_y + 12, color=colors.black)
+                legend_box = BoxSymbol(10, legend_y, 20, 12, color=colors.black)
                 box_feature = gd.Feature(sequence.seq, custom_symbol=legend_box, location=FeatureLocation(0, 1))
                 legend_set.add_feature(box_feature)
                 legend_y += 20
