@@ -94,8 +94,11 @@ def draw_sequence_graphics(sequences, promoter_regions_list, output_path):
         # Draw diagram
         gd_diagram.draw(format="linear", pagesize=landscape(letter), fragments=1,
                         start=0, end=len(sequence))
+        
 
         # Add legend
+        max_len = max(len(seq) for seq in sequences)
+        legend_track = gd_diagram.new_track(1, name="Legend", start=0, end=max_len)
         legend_y = 20
         for seq, promoter_regions in zip(sequences, promoter_regions_list):
             for i, (start, end) in enumerate(promoter_regions):
