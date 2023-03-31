@@ -45,13 +45,15 @@ def predict_promoter_regions(sequence, motif_file):
     # Parse the FIMO output and extract the promoter regions
     promoter_regions = []
     with open("fimo_out/fimo.tsv", "r") as fimo_output_file:
-        next(fimo_output_file)  # Skip the header
         for line in fimo_output_file:
-            values = line.strip().split("\t")
-            if len(values) >= 5:
-              _, _, _, start, end, *_ = values
-             promoter_regions.append((int(start), int(end)))
+           # Skip comments and headers
+          if line.startswith("#"):
+                continue
 
+         values = line.strip().split("\t")
+         if len(values) >= 5:
+               _, _, _, start, end, *_ = values
+               promoter_regions.append((int(start), int(end)))
 
     return promoter_regions
 
