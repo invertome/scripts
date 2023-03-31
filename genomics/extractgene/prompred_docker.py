@@ -42,7 +42,15 @@ def predict_promoter_regions(sequence, motif_file):
     os.remove("temp_sequence.fasta")
 
 
-    # ...
+    # Parse the FIMO output and extract the promoter regions
+    promoter_regions = []
+    with open("fimo_out/fimo.tsv", "r") as fimo_output_file:
+        next(fimo_output_file)  # Skip the header
+        for line in fimo_output_file:
+            _, start, end, *_ = line.strip().split("\t")
+            promoter_regions.append((int(start), int(end)))
+
+    return promoter_regions
 
 def write_promoter_fasta(sequences, output_path):
     """
