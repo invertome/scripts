@@ -100,7 +100,7 @@ def draw_sequence_graphics(sequences, promoter_regions_list, output_path):
             for i, (start, end) in enumerate(promoter_regions):
                 seq_id = seq.id
                 sequence = seq[start:end]
-                legend_text = gd.TextComponent(10, legend_y, f"Motif {i+1} ({seq_id}): {sequence.seq}", size=12, color=colors.black)
+                legend_text = gd.TextFeature(10, legend_y, f"Motif {i+1} ({seq_id}): {sequence.seq}", size=12, color=colors.black)
                 gd_diagram.add_component(legend_text)
                 legend_y += 20
 
