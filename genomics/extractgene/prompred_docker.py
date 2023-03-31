@@ -3,16 +3,19 @@ import sys
 import argparse
 import subprocess
 import shutil
+import tempfile
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio.SeqFeature import SeqFeature, FeatureLocation
 from Bio.Graphics import GenomeDiagram
 from Bio.Graphics.GenomeDiagram import CrossLink
+from Bio.Graphics.GenomeDiagram._Colors import ColorTranslator
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib.units import cm
 from reportlab.graphics.shapes import String
+from reportlab.pdfgen import canvas
 
 class BoxSymbol:
     def __init__(self, x, y, width, height, color):
@@ -95,42 +98,41 @@ def write_promoter_fasta(sequences, output_path):
             SeqIO.write(seq, output_file, "fasta")
             
 def draw_sequence_graphics(sequences, promoter_regions_list, output_path):
-    for idx, (sequence, promoter_regions) in enumerate(zip(sequences, promoter_regions_list)):
+    max_len = max(len(seq) for seq in sequences)
+    pdf_canvas = canvas.Canvas(output_path, pagesize=letter)
+    
+    for sequence, promoter_regions in zip(sequences, promoter_regions_list):
         gd_diagram = GenomeDiagram.Diagram(sequence.id)
-        gd_track_for_features = gd_diagram.new_track(1, name="Annotated Features", scale_ticks=1)
-        gd_feature_set = gd_track_for_features.new_set()
+        feature_track = gd_diagram.new_track(1, name=sequence.id, greytrack=False, start=0, end=len(sequence))
+        feature_set = feature_track.new_set()
 
-        # Add features to the feature set
         for i, (start, end) in enumerate(promoter_regions):
             feature = SeqFeature(FeatureLocation(start, end), strand=1)
-            gd_feature_set.add_feature(feature, label=True, label_position="middle",
-                                       label_size=6, label_angle=0, color=colors.red,
-                                       name=f"Motif {i+1} ({start}-{end})")
-
-        # Draw diagram
-        gd_diagram.draw(format="linear", pagesize=landscape(letter), fragments=1,
-                        start=0, end=len(sequence))
+            feature_set.add_feature(
+                feature,
+                color=ColorTranslator().rgb_to_reportlab(colors.get_rgb_color(float(i) / len(promoter_regions), 0.5, 1)),
+                name=f"Motif {i+1}",
+                label=True,
+                label_size=8,
+                label_color=colors.black,
+                label_position="middle",
+            )
         
-
-        # Add legend
-        max_len = max(len(seq) for seq in sequences)
-        legend_track = gd_diagram.new_track(1, name="Legend", start=0, end=max_len)
-        legend_set = legend_track.new_set()
-        legend_y = 20
-        for seq, promoter_regions in zip(sequences, promoter_regions_list):
-            for i, (start, end) in enumerate(promoter_regions):
-                seq_id = seq.id
-                sequence = seq[start:end]
-                legend_text = String(30, legend_y, f"Motif {i+1} ({seq_id}): {sequence.seq}", textAnchor="start", fontSize=12, fillColor=colors.black)
-                legend_box = BoxSymbol(10, legend_y, 20, 12, color=colors.black)
-                box_feature = SeqFeature(FeatureLocation(0, 1), type=sequence.seq, qualifiers={"custom_symbol": legend_box})
-                legend_set.add_feature(box_feature)
-                legend_y += 20
-
-
-
-        # Save diagram as a PDF
-        gd_diagram.write(os.path.join(output_path, f"{sequence.id}_diagram_{idx}.pdf"), "PDF")
+        gd_diagram.draw(
+            format="linear",
+            orientation="landscape",
+            pagesize=letter,
+            fragments=1,
+            start=0,
+            end=len(sequence),
+            tracklines=0,
+            x=0.05,
+            y=0.85,
+        )
+        gd_diagram.write_to_pdf(pdf_canvas)
+        pdf_canvas.showPage()
+    
+    pdf_canvas.save()
 
 
 if __name__ == "__main__":
