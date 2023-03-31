@@ -9,6 +9,7 @@ from Bio.SeqRecord import SeqRecord
 from Bio.SeqFeature import SeqFeature, FeatureLocation
 from Bio.Graphics import GenomeDiagram
 from Bio.Graphics.GenomeDiagram import CrossLink
+from Bio.Graphics.GenomeDiagram._Feature import SigilBox
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib.units import cm
@@ -105,8 +106,11 @@ def draw_sequence_graphics(sequences, promoter_regions_list, output_path):
             for i, (start, end) in enumerate(promoter_regions):
                 seq_id = seq.id
                 sequence = seq[start:end]
-                legend_text = String(10, legend_y, f"Motif {i+1} ({seq_id}): {sequence.seq}", textAnchor="start", fontSize=12, fillColor=colors.black)
+                legend_text = String(30, legend_y, f"Motif {i+1} ({seq_id}): {sequence.seq}", textAnchor="start", fontSize=12, fillColor=colors.black)
                 legend_set.add_component(legend_text)
+                legend_box = SigilBox(10, legend_y, 20, legend_y + 12, color=colors.black)
+                box_feature = gd.Feature(sequence.seq, custom_symbol=legend_box, location=FeatureLocation(0, 1))
+                legend_set.add_feature(box_feature)
                 legend_y += 20
 
 
