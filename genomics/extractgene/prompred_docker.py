@@ -95,6 +95,7 @@ def draw_sequence_graphics(sequences, promoter_regions_list, output_path):
                         start=0, end=len(sequence))
 
         # Add legend
+        max_len = max(len(seq) for seq in sequences)
         legend_track = gd_diagram.new_track(1, name="Legend", start=0, end=max_len)
         legend_set = legend_track.new_set()
         for i, (seq_id, start, end) in enumerate(promoter_regions):
