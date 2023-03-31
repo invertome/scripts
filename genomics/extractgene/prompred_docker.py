@@ -85,7 +85,7 @@ if __name__ == "__main__":
     # Predict and extract promoter regions for each sequence
     promoter_sequences = []
     for seq in sequences:
-        promoter_regions = predict_promoter_regions(seq, args.motif)
+        promoter_regions = predict_promoter_regions(seq, args.motif, args.threshold)
         for start, end in promoter_regions:
             promoter_seq = SeqRecord(seq.seq[start:end], id=f"{seq.id}_motif_{start}-{end}", description=f"Motif in promoter region for {seq.id}")
             promoter_sequences.append(promoter_seq)
