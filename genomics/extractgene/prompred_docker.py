@@ -23,7 +23,7 @@ def parse_fasta(file_path):
     with open(file_path, 'r') as fasta_file:
         return list(SeqIO.parse(fasta_file, 'fasta'))
 
-def predict_promoter_regions(sequence, motif_file, threshold, output_folder):
+def predict_promoter_regions(sequence, motif_file, threshold):
     """
     Use FIMO in a Docker container to predict promoter regions in the given sequence based on the provided motif file.
 
@@ -36,7 +36,7 @@ def predict_promoter_regions(sequence, motif_file, threshold, output_folder):
         SeqIO.write(sequence, temp_file, "fasta")
 
     # Run FIMO within the Docker container
-    fimo_output_path = os.path.join(output_folder, "fimo_out")
+    fimo_output_path = os.path.join(args.output, "fimo_out")
     subprocess.run([
         "docker", "run", "-v", f"{os.getcwd()}:/home/meme",
         "memesuite/memesuite",
