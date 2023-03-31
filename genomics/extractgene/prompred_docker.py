@@ -75,10 +75,12 @@ def predict_promoter_regions(sequence, motif_file, threshold):
         fimo_output_file.readline()  # Skip header
         for line in fimo_output_file:
             columns = line.strip().split("\t")
-            start, end = int(columns[3]) - 1, int(columns[4])
-            promoter_regions.append((start, end))
+            if len(columns) >= 5:
+                start, end = int(columns[3]) - 1, int(columns[4])
+                promoter_regions.append((start, end))
 
     return promoter_regions
+
 
 
 def write_promoter_fasta(sequences, output_path):
