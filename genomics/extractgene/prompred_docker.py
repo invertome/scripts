@@ -12,7 +12,7 @@ from Bio.Graphics.GenomeDiagram import CrossLink
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib.units import cm
-from reportlab.graphics.shapes import TextComponent
+from reportlab.graphics.shapes import String
 
 def parse_fasta(file_path):
     """
@@ -101,7 +101,7 @@ def draw_sequence_graphics(sequences, promoter_regions_list, output_path):
             for i, (start, end) in enumerate(promoter_regions):
                 seq_id = seq.id
                 sequence = seq[start:end]
-                legend_text = TextComponent(10, legend_y, f"Motif {i+1} ({seq_id}): {sequence.seq}", size=12, color=colors.black)
+                legend_text = String(10, legend_y, f"Motif {i+1} ({seq_id}): {sequence.seq}", size=12, color=colors.black)
                 gd_diagram.add_component(legend_text)
                 legend_y += 20
 
