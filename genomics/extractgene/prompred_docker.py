@@ -108,7 +108,7 @@ def draw_sequence_graphics(sequences, promoter_regions_list, output_path):
             feature = SeqFeature(FeatureLocation(start, end), strand=1)
             feature_set.add_feature(
                 feature,
-                color=plt.cm.viridis(float(i) / len(promoter_regions)),
+                color=plt.cm.viridis(float(i) / len(promoter_regions))[:3],
                 name=f"Motif {i+1}",
                 label=True,
                 label_size=8,
