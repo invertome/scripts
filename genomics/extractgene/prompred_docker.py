@@ -107,7 +107,7 @@ def draw_sequence_graphics(sequences, promoter_regions_list, output_path):
             feature = SeqFeature(FeatureLocation(start, end), strand=1)
             feature_set.add_feature(
                 feature,
-                color=ColorTranslator().rgb_to_reportlab(colors.get_rgb_color(float(i) / len(promoter_regions), 0.5, 1)),
+                color=ColorTranslator().rgb_to_color(colors.get_rgb_color(float(i) / len(promoter_regions), 0.5, 1)),
                 name=f"Motif {i+1}",
                 label=True,
                 label_size=8,
