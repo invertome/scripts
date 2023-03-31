@@ -47,7 +47,7 @@ def predict_promoter_regions(sequence, motif_file):
     with open("fimo_out/fimo.tsv", "r") as fimo_output_file:
         for line in fimo_output_file:
             # Skip comments and headers
-            if line.startswith("#"):
+            if line.startswith("#") or line.startswith("pattern") or line.startswith("motif_id"):
                 continue
 
             values = line.strip().split("\t")
