@@ -34,6 +34,7 @@ def predict_promoter_regions(sequence, motif_file):
 
     os.remove("temp_sequence.fasta")
 
+
     # ...
 
 def write_promoter_fasta(sequences, output_path):
