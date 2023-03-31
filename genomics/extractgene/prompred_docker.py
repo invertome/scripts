@@ -8,7 +8,9 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio.SeqFeature import SeqFeature, FeatureLocation
 from Bio.Graphics import GenomeDiagram
+from Bio.Graphics.GenomeDiagram import CrossLink
 from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib.units import cm
 
 def parse_fasta(file_path):
@@ -34,12 +36,13 @@ def predict_promoter_regions(sequence, motif_file, threshold):
         SeqIO.write(sequence, temp_file, "fasta")
 
     # Run FIMO within the Docker container
+    fimo_output_path = os.path.join(output_folder, "fimo_out")
     subprocess.run([
         "docker", "run", "-v", f"{os.getcwd()}:/home/meme",
         "memesuite/memesuite",
         "fimo",
         "--thresh", str(threshold),
-        "--oc", "/home/meme/fimo_out",
+        "--oc", f"/home/meme/{fimo_output_path}",
         "/home/meme/" + motif_file,
         "/home/meme/temp_sequence.fasta"
     ])
@@ -74,20 +77,32 @@ def write_promoter_fasta(sequences, output_path):
         for seq in sequences:
             SeqIO.write(seq, output_file, "fasta")
             
-def draw_sequence_graphics(sequences, promoter_regions, output_path):
-    gd_diagram = GenomeDiagram.Diagram("Promoter regions & Motifs")
-    max_len = max([len(seq) for seq in sequences])
+def draw_sequence_graphics(sequences, promoter_regions_list, output_path):
+    for idx, (sequence, promoter_regions) in enumerate(zip(sequences, promoter_regions_list)):
+        gd_diagram = GenomeDiagram.Diagram(sequence.id)
+        gd_track_for_features = gd_diagram.new_track(1, name="Annotated Features", scale_ticks=1)
+        gd_feature_set = gd_track_for_features.new_set()
 
-    for i, (seq, regions) in enumerate(zip(sequences, promoter_regions)):
-        gd_track = gd_diagram.new_track(i + 1, greytrack=True, start=0, end=len(seq), scale_ticks=1, scale_smalltick_interval=1000, name=seq.id)
-        gd_feature_set = gd_track.new_set()
-
-        for start, end in regions:
+        # Add features to the feature set
+        for i, (start, end) in enumerate(promoter_regions):
             feature = SeqFeature(FeatureLocation(start, end), strand=1)
-            gd_feature_set.add_feature(feature, color=colors.red, label=True, label_position="start", label_size=8)
+            gd_feature_set.add_feature(feature, label=True, label_position="middle",
+                                       label_size=6, label_angle=0, color=colors.red,
+                                       name=f"Motif {i+1} ({start}-{end})")
 
-    gd_diagram.draw(format="linear", pagesize="A4", fragments=1, start=0, end=max_len)
-    gd_diagram.write(output_path, "pdf")
+        # Draw diagram
+        gd_diagram.draw(format="linear", pagesize=landscape(letter), fragments=1,
+                        start=0, end=len(sequence))
+
+        # Add legend
+        legend_y = 650
+        for i, (start, end) in enumerate(promoter_regions):
+            gd_diagram.add_text(f"Motif {i+1}: {sequence.seq[start:end]}", (10, legend_y), font_size=12, color=colors.black)
+            legend_y -= 20
+
+        # Save diagram as a PDF
+        gd_diagram.write(os.path.join(output_path, f"{sequence.id}_diagram_{idx}.pdf"), "PDF")
+
 
 if __name__ == "__main__":
     # Parse command-line arguments
@@ -98,6 +113,11 @@ if __name__ == "__main__":
     parser.add_argument("-t", "--threshold", help="FIMO threshold value", required=True, type=float)
     args = parser.parse_args()
 
+    # Create output folders
+    os.makedirs(args.output, exist_ok=True)
+    output_graphics = os.path.join(args.output, "graphics")
+    os.makedirs(output_graphics, exist_ok=True)
+    
     # Load sequences from the input FASTA file
     sequences = parse_fasta(args.input)
 
@@ -116,6 +136,5 @@ if __name__ == "__main__":
     os.makedirs(args.output, exist_ok=True)
     write_promoter_fasta(promoter_sequences, output_fasta)
     
-    # Draw sequence graphics and save as a PDF file
-    output_graphics = os.path.join(args.output, "promoter_regions_graphics.pdf")
+    # Draw sequence graphics
     draw_sequence_graphics(sequences, all_promoter_regions, output_graphics)
