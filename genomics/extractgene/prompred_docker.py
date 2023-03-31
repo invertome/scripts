@@ -7,7 +7,14 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
 def parse_fasta(file_path):
-    # ...
+    """
+    Parse a FASTA file and return a list of sequences.
+
+    :param file_path: Path to the FASTA file
+    :return: List of SeqRecords
+    """
+    with open(file_path, 'r') as fasta_file:
+        return list(SeqIO.parse(fasta_file, 'fasta'))
 
 def predict_promoter_regions(sequence, motif_file):
     """
