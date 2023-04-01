@@ -75,10 +75,7 @@ def write_promoter_fasta(sequences, output_path):
             SeqIO.write(seq, output_file, "fasta")
             
 
-def draw_sequence_graphics(sequences, promoter_regions_list, output_folder):
-    output_graphics = os.path.join(output_folder, "output_graphics.png")
-    no_motif_file = os.path.join(args.output, "sequences_without_motifs.txt")
-
+def draw_sequence_graphics(sequences, promoter_regions_list, output_path, output_pdf, no_motif_file):
     fig, axes = plt.subplots(len(sequences), 1, figsize=(10, len(sequences) * 2))
     if len(sequences) == 1:
         axes = [axes]
@@ -100,7 +97,11 @@ def draw_sequence_graphics(sequences, promoter_regions_list, output_folder):
             ax.set_title(sequence.id)
 
         plt.tight_layout()
-        plt.savefig(output_graphics)
+        plt.savefig(output_path)
+        
+        with PdfPages(output_pdf) as pdf:
+            pdf.savefig(fig)
+        
         plt.close()
 
 
@@ -139,4 +140,8 @@ if __name__ == "__main__":
     write_promoter_fasta(promoter_sequences, output_fasta)
     
     # Draw sequence graphics
-    draw_sequence_graphics(sequences, all_promoter_regions, output_graphics)
+    output_graphics = os.path.join(args.output, "output_graphics.png")
+    output_pdf = os.path.join(args.output, "output_graphics.pdf")
+    no_motif_file = os.path.join(args.output, "seqs_no_motifs.list")
+    draw_sequence_graphics(sequences, all_promoter_regions, output_graphics, output_pdf, no_motif_file)
+
