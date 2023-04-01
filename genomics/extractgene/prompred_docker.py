@@ -101,26 +101,21 @@ def draw_sequence_graphics(sequences, promoter_regions_list, output_path):
             feature = SeqFeature(FeatureLocation(start, end), strand=1)
             feature_set.add_feature(
                 feature,
-                color=plt.cm.viridis(float(i) / len(promoter_regions))[:3],
+                color=colors.Color(*plt.cm.viridis(float(i) / len(promoter_regions))[:3]),
                 name=f"Motif {i+1}",
                 label=True,
                 label_size=8,
                 label_color=colors.black,
                 label_position="middle",
             )
-
-        start, end = 0, len(sequence)
-        feature_track.start = start
-        feature_track.end = end
-        feature_track.height = 1.0
-
+        
         gd_diagram.draw(
             format="linear",
             orientation="landscape",
-            pagesize=letter,
+            pagesize=(max_len * 0.01 * cm, 10 * cm),
             fragments=1,
-            start=start,
-            end=end,
+            start=0,
+            end=len(sequence),
             tracklines=0,
             x=0.05,
             y=0.85,
@@ -129,7 +124,6 @@ def draw_sequence_graphics(sequences, promoter_regions_list, output_path):
         pdf_canvas.showPage()
     
     pdf_canvas.save()
-
 
 
 
