@@ -88,7 +88,6 @@ class CustomDiagram(_Diagram):
         track.height = 1.0
         return track
 
-
 def draw_sequence_graphics(sequences, promoter_regions_list, output_path):
     max_len = max(len(seq) for seq in sequences)
     pdf_canvas = canvas.Canvas(output_path, pagesize=letter)
@@ -111,8 +110,8 @@ def draw_sequence_graphics(sequences, promoter_regions_list, output_path):
             )
 
         start, end = 0, len(sequence)
-        feature_track.scale.start = start
-        feature_track.scale.end = end
+        feature_track.start = start
+        feature_track.end = end
         feature_track.height = 1.0
 
         gd_diagram.draw(
