@@ -18,20 +18,6 @@ from reportlab.lib.units import cm
 from reportlab.graphics.shapes import String
 from reportlab.pdfgen import canvas
 
-class BoxSymbol:
-    def __init__(self, x, y, width, height, color):
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
-        self.color = color
-
-    def __call__(self, gd_diagram, gd_track, gd_set, start, end, strand, **kwargs):
-        from reportlab.lib import colors
-        from reportlab.graphics.shapes import Rect
-
-        box = Rect(self.x, self.y, self.width, self.height, fillColor=self.color)
-        gd_set.add(box)
 
 
 def parse_fasta(file_path):
@@ -95,13 +81,21 @@ def write_promoter_fasta(sequences, output_path):
         for seq in sequences:
             SeqIO.write(seq, output_file, "fasta")
             
+def 
+class CustomDiagram(_Diagram):
+    def draw(self, *args, **kwargs):
+        drawer = _LinearDrawer(self, *args, **kwargs)
+        drawer.track_crop = 0
+        drawer.draw()
+
+
 def draw_sequence_graphics(sequences, promoter_regions_list, output_path):
     max_len = max(len(seq) for seq in sequences)
     pdf_canvas = canvas.Canvas(output_path, pagesize=letter)
     
     for sequence, promoter_regions in zip(sequences, promoter_regions_list):
-        gd_diagram = GenomeDiagram.Diagram(sequence.id)
-        feature_track = gd_diagram.new_track(1, name=f"Track_{sequence.id}", greytrack=True, greytrack_labels=10, scale=True, height=1.0, start_pad=0.5)
+        gd_diagram = CustomDiagram(sequence.id)
+        feature_track = gd_diagram.new_track(name=f"Track_{sequence.id}", greytrack=True, greytrack_labels=10, scale=True, height=1.0, start_pad=0.5)
         feature_set = feature_track.new_set()
 
         for i, (start, end) in enumerate(promoter_regions):
@@ -116,15 +110,17 @@ def draw_sequence_graphics(sequences, promoter_regions_list, output_path):
                 label_position="middle",
             )
         
-        drawer = GenomeDiagram.LinearDrawer(gd_diagram, pagesize=letter)
-        drawer.track_crop = 0  # Manually set track_crop value
-        drawer.draw(format="linear",
-                    orientation="landscape",
-                    start=0,
-                    end=len(sequence),
-                    tracklines=0,
-                    x=0.05,
-                    y=0.85)
+        gd_diagram.draw(
+            format="linear",
+            orientation="landscape",
+            pagesize=letter,
+            fragments=1,
+            start=0,
+            end=len(sequence),
+            tracklines=0,
+            x=0.05,
+            y=0.85,
+        )
         
         gd_diagram.write_to_pdf(pdf_canvas)
         pdf_canvas.showPage()
