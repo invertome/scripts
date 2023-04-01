@@ -101,7 +101,7 @@ def draw_sequence_graphics(sequences, promoter_regions_list, output_path):
     
     for sequence, promoter_regions in zip(sequences, promoter_regions_list):
         gd_diagram = GenomeDiagram.Diagram(sequence.id)
-        feature_track = gd_diagram.new_track(name=f"Track_{sequence.id}", greytrack=True, greytrack_labels=10, scale=True, height=1.0, start_pad=0.5)
+        feature_track = gd_diagram.new_track(1, name=f"Track_{sequence.id}", greytrack=True, greytrack_labels=10, scale=True, height=1.0, start_pad=0.5)
         feature_set = feature_track.new_set()
 
         for i, (start, end) in enumerate(promoter_regions):
