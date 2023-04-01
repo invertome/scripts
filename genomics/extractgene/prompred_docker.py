@@ -5,6 +5,7 @@ import subprocess
 import shutil
 import tempfile
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
@@ -75,26 +76,34 @@ def write_promoter_fasta(sequences, output_path):
             SeqIO.write(seq, output_file, "fasta")
             
 
-def draw_sequence_graphics(sequences, promoter_regions_list, output_path):
+def draw_sequence_graphics(sequences, promoter_regions_list, output_path, output_pdf, no_motif_file):
     fig, axes = plt.subplots(len(sequences), 1, figsize=(10, len(sequences) * 2))
     if len(sequences) == 1:
         axes = [axes]
 
-    for ax, sequence, promoter_regions in zip(axes, sequences, promoter_regions_list):
-        for i, (start, end) in enumerate(promoter_regions):
-            motif_sequence = str(sequence.seq[start:end])
-            label_text = f"Motif {i+1}: {start}-{end}, {motif_sequence}"
-            ax.axvspan(start, end, color=plt.cm.viridis(float(i) / len(promoter_regions)), alpha=0.5, label=label_text)
-        
-        ax.set_xlim(0, len(sequence))
-        ax.set_ylim(0, 1)
-        ax.set_yticks([])
-        ax.set_title(sequence.id)
-        ax.legend(loc='upper right', fontsize='small')
+    with open(no_motif_file, "w") as no_motif:
+        for ax, sequence, promoter_regions in zip(axes, sequences, promoter_regions_list):
+            if promoter_regions:
+                for i, (start, end) in enumerate(promoter_regions):
+                    motif_sequence = str(sequence.seq[start:end])
+                    label_text = f"Motif {i+1}: {start}-{end}, {motif_sequence}"
+                    ax.axvspan(start, end, color=plt.cm.viridis(float(i) / len(promoter_regions)), alpha=0.5, label=label_text)
+                ax.legend(loc='upper right', fontsize='small')
+            else:
+                no_motif.write(f"{sequence.id}\n")
 
-    plt.tight_layout()
-    plt.savefig(output_path)
-    plt.close()
+            ax.set_xlim(0, len(sequence))
+            ax.set_ylim(0, 1)
+            ax.set_yticks([])
+            ax.set_title(sequence.id)
+
+        plt.tight_layout()
+        plt.savefig(output_path)
+        
+        with PdfPages(output_pdf) as pdf:
+            pdf.savefig(fig)
+        
+        plt.close()
 
 
 
@@ -131,4 +140,7 @@ if __name__ == "__main__":
     write_promoter_fasta(promoter_sequences, output_fasta)
     
     # Draw sequence graphics
-    draw_sequence_graphics(sequences, all_promoter_regions, output_graphics)
+    output_graphics = "output_graphics.png"
+    output_pdf = "output_graphics.pdf"
+    no_motif_file = "sequences_without_motifs.txt"
+    draw_sequence_graphics(sequences, all_promoter_regions, output_graphics, output_pdf, no_motif_file)
