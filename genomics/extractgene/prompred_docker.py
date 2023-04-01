@@ -77,7 +77,7 @@ def write_promoter_fasta(sequences, output_path):
 
 def draw_sequence_graphics(sequences, promoter_regions_list, output_folder):
     output_graphics = os.path.join(output_folder, "output_graphics.png")
-    no_motif_file = os.path.join(output_folder, "sequences_without_motifs.txt")
+    no_motif_file = os.path.join(args.output, "sequences_without_motifs.txt")
 
     fig, axes = plt.subplots(len(sequences), 1, figsize=(10, len(sequences) * 2))
     if len(sequences) == 1:
