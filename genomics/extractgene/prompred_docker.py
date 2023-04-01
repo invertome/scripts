@@ -10,8 +10,9 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio.SeqFeature import SeqFeature, FeatureLocation
 from Bio.Graphics import GenomeDiagram
-from Bio.Graphics.GenomeDiagram import CrossLink
+from Bio.Graphics.GenomeDiagram import Diagram as _Diagram, _LinearDrawer, CrossLink
 from Bio.Graphics.GenomeDiagram._Colors import ColorTranslator
+
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib.units import cm
