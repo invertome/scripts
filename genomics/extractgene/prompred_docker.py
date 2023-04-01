@@ -75,28 +75,34 @@ def write_promoter_fasta(sequences, output_path):
             SeqIO.write(seq, output_file, "fasta")
             
 
-def draw_sequence_graphics(sequences, promoter_regions_list, output_path):
+def draw_sequence_graphics(sequences, promoter_regions_list, output_folder):
+    output_graphics = os.path.join(output_folder, "output_graphics.png")
+    no_motif_file = os.path.join(output_folder, "sequences_without_motifs.txt")
+
     fig, axes = plt.subplots(len(sequences), 1, figsize=(10, len(sequences) * 2))
     if len(sequences) == 1:
         axes = [axes]
 
-    for ax, sequence, promoter_regions in zip(axes, sequences, promoter_regions_list):
-        if promoter_regions:  # Check if there are any promoter regions
-            for i, (start, end) in enumerate(promoter_regions):
-                motif_sequence = str(sequence.seq[start:end])
-                label_text = f"Motif {i+1}: {start}-{end}, {motif_sequence}"
-                ax.axvspan(start, end, color=plt.cm.viridis(float(i) / len(promoter_regions)), alpha=0.5, label=label_text)
-        
-            ax.legend(loc='upper right', fontsize='small')
-        
-        ax.set_xlim(0, len(sequence))
-        ax.set_ylim(0, 1)
-        ax.set_yticks([])
-        ax.set_title(sequence.id)
+    with open(no_motif_file, "w") as no_motif:
+        for ax, sequence, promoter_regions in zip(axes, sequences, promoter_regions_list):
+            if promoter_regions:
+                for i, (start, end) in enumerate(promoter_regions):
+                    motif_sequence = str(sequence.seq[start:end])
+                    label_text = f"Motif {i+1}: {start}-{end}, {motif_sequence}"
+                    ax.axvspan(start, end, color=plt.cm.viridis(float(i) / len(promoter_regions)), alpha=0.5, label=label_text)
+                ax.legend(loc='upper right', fontsize='small')
+            else:
+                no_motif.write(f"{sequence.id}\n")
 
-    plt.tight_layout()
-    plt.savefig(output_path)
-    plt.close()
+            ax.set_xlim(0, len(sequence))
+            ax.set_ylim(0, 1)
+            ax.set_yticks([])
+            ax.set_title(sequence.id)
+
+        plt.tight_layout()
+        plt.savefig(output_graphics)
+        plt.close()
+
 
 
 
