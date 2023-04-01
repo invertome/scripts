@@ -83,10 +83,10 @@ def write_promoter_fasta(sequences, output_path):
             SeqIO.write(seq, output_file, "fasta")
             
 class CustomDiagram(_Diagram):
-    def draw(self, *args, **kwargs):
-        drawer = _LinearDrawer(self, *args, **kwargs)
-        drawer.track_crop = 0
-        drawer.draw()
+    def new_track(self, track_level, *args, **kwargs):
+        track = super().new_track(track_level, *args, **kwargs)
+        track.height = 1.0
+        return track
 
 
 def draw_sequence_graphics(sequences, promoter_regions_list, output_path):
@@ -95,7 +95,7 @@ def draw_sequence_graphics(sequences, promoter_regions_list, output_path):
     
     for sequence, promoter_regions in zip(sequences, promoter_regions_list):
         gd_diagram = CustomDiagram(sequence.id)
-        feature_track = gd_diagram.new_track(name=f"Track_{sequence.id}", greytrack=True, greytrack_labels=10, scale=True, height=1.0, start_pad=0.5)
+        feature_track = gd_diagram.new_track(1, name=f"Track_{sequence.id}", greytrack=True, greytrack_labels=10, scale=True, height=1.0, start_pad=0.5)
         feature_set = feature_track.new_set()
 
         for i, (start, end) in enumerate(promoter_regions):
