@@ -89,7 +89,7 @@ class CustomDiagram(_Diagram):
         return track
 
 
-def def draw_sequence_graphics(sequences, promoter_regions_list, output_path):
+def draw_sequence_graphics(sequences, promoter_regions_list, output_path):
     max_len = max(len(seq) for seq in sequences)
     pdf_canvas = canvas.Canvas(output_path, pagesize=letter)
     
