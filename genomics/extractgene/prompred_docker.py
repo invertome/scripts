@@ -81,7 +81,6 @@ def write_promoter_fasta(sequences, output_path):
         for seq in sequences:
             SeqIO.write(seq, output_file, "fasta")
             
-def 
 class CustomDiagram(_Diagram):
     def draw(self, *args, **kwargs):
         drawer = _LinearDrawer(self, *args, **kwargs)
