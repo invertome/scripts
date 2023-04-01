@@ -89,14 +89,13 @@ class CustomDiagram(_Diagram):
         return track
 
 
-def draw_sequence_graphics(sequences, promoter_regions_list, output_path):
+def def draw_sequence_graphics(sequences, promoter_regions_list, output_path):
     max_len = max(len(seq) for seq in sequences)
     pdf_canvas = canvas.Canvas(output_path, pagesize=letter)
     
     for sequence, promoter_regions in zip(sequences, promoter_regions_list):
         gd_diagram = GenomeDiagram.Diagram(sequence.id)
         feature_track = gd_diagram.new_track(1, name=f"Track_{sequence.id}", greytrack=True, greytrack_labels=10, scale=True, height=1.0, start_pad=0.5)
-        feature_track.height = 1.0  # Set the track height directly
         feature_set = feature_track.new_set()
 
         for i, (start, end) in enumerate(promoter_regions):
@@ -110,23 +109,28 @@ def draw_sequence_graphics(sequences, promoter_regions_list, output_path):
                 label_color=colors.black,
                 label_position="middle",
             )
-        
+
+        start, end = 0, len(sequence)
+        feature_track.scale.start = start
+        feature_track.scale.end = end
+        feature_track.height = 1.0
+
         gd_diagram.draw(
             format="linear",
             orientation="landscape",
             pagesize=letter,
             fragments=1,
-            start=0,
-            end=len(sequence),
+            start=start,
+            end=end,
             tracklines=0,
             x=0.05,
             y=0.85,
         )
-        
         gd_diagram.write_to_pdf(pdf_canvas)
         pdf_canvas.showPage()
     
     pdf_canvas.save()
+
 
 
 
