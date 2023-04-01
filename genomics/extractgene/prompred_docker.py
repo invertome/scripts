@@ -81,16 +81,18 @@ def draw_sequence_graphics(sequences, promoter_regions_list, output_path):
         axes = [axes]
 
     for ax, sequence, promoter_regions in zip(axes, sequences, promoter_regions_list):
-        for i, (start, end) in enumerate(promoter_regions):
-            motif_sequence = str(sequence.seq[start:end])
-            label_text = f"Motif {i+1}: {start}-{end}, {motif_sequence}"
-            ax.axvspan(start, end, color=plt.cm.viridis(float(i) / len(promoter_regions)), alpha=0.5, label=label_text)
+        if promoter_regions:  # Check if there are any promoter regions
+            for i, (start, end) in enumerate(promoter_regions):
+                motif_sequence = str(sequence.seq[start:end])
+                label_text = f"Motif {i+1}: {start}-{end}, {motif_sequence}"
+                ax.axvspan(start, end, color=plt.cm.viridis(float(i) / len(promoter_regions)), alpha=0.5, label=label_text)
+        
+            ax.legend(loc='upper right', fontsize='small')
         
         ax.set_xlim(0, len(sequence))
         ax.set_ylim(0, 1)
         ax.set_yticks([])
         ax.set_title(sequence.id)
-        ax.legend(loc='upper right', fontsize='small')
 
     plt.tight_layout()
     plt.savefig(output_path)
