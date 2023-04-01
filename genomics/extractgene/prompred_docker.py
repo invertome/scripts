@@ -74,13 +74,6 @@ def write_promoter_fasta(sequences, output_path):
         for seq in sequences:
             SeqIO.write(seq, output_file, "fasta")
             
-class CustomDiagram(_Diagram):
-    def new_track(self, track_level, *args, **kwargs):
-        track = super().new_track(track_level, *args, **kwargs)
-        track.height = 1.0
-        return track
-
-import matplotlib.pyplot as plt
 
 def draw_sequence_graphics(sequences, promoter_regions_list, output_path):
     fig, axes = plt.subplots(len(sequences), 1, figsize=(10, len(sequences) * 2))
