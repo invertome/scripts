@@ -9,15 +9,7 @@ from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio.SeqFeature import SeqFeature, FeatureLocation
-from Bio.Graphics import GenomeDiagram
-from Bio.Graphics.GenomeDiagram import Diagram as _Diagram, _LinearDrawer, CrossLink
-from Bio.Graphics.GenomeDiagram._Colors import ColorTranslator
 
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import letter, landscape
-from reportlab.lib.units import cm
-from reportlab.graphics.shapes import String
-from reportlab.pdfgen import canvas
 
 
 
@@ -88,42 +80,26 @@ class CustomDiagram(_Diagram):
         track.height = 1.0
         return track
 
-def draw_sequence_graphics(sequences, promoter_regions_list, output_path):
-    max_len = max(len(seq) for seq in sequences)
-    pdf_canvas = canvas.Canvas(output_path, pagesize=letter)
-    
-    for sequence, promoter_regions in zip(sequences, promoter_regions_list):
-        gd_diagram = GenomeDiagram.Diagram(sequence.id)
-        feature_track = gd_diagram.new_track(1, name=f"Track_{sequence.id}", greytrack=True, greytrack_labels=10, scale=True, height=1.0, start_pad=0.5, end_pad=0.5)
-        feature_set = feature_track.new_set()
+import matplotlib.pyplot as plt
 
+def draw_sequence_graphics(sequences, promoter_regions_list, output_path):
+    fig, axes = plt.subplots(len(sequences), 1, figsize=(10, len(sequences) * 2))
+    if len(sequences) == 1:
+        axes = [axes]
+
+    for ax, sequence, promoter_regions in zip(axes, sequences, promoter_regions_list):
         for i, (start, end) in enumerate(promoter_regions):
-            feature = SeqFeature(FeatureLocation(start, end), strand=1)
-            feature_set.add_feature(
-                feature,
-                color=colors.Color(*plt.cm.viridis(float(i) / len(promoter_regions))[:3]),
-                name=f"Motif {i+1}",
-                label=True,
-                label_size=8,
-                label_color=colors.black,
-                label_position="middle",
-            )
+            ax.axvspan(start, end, color=plt.cm.viridis(float(i) / len(promoter_regions)), alpha=0.5, label=f"Motif {i+1}")
         
-        gd_diagram.draw(
-            format="linear",
-            orientation="landscape",
-            pagesize=(max_len * 0.01 * cm, 10 * cm),
-            fragments=1,
-            start=0,
-            end=len(sequence),
-            tracklines=0,
-            x=0.05,
-            y=0.85,
-        )
-        gd_diagram.write_to_pdf(pdf_canvas)
-        pdf_canvas.showPage()
-    
-    pdf_canvas.save()
+        ax.set_xlim(0, len(sequence))
+        ax.set_ylim(0, 1)
+        ax.set_yticks([])
+        ax.set_title(sequence.id)
+        ax.legend(loc='upper right')
+
+    plt.tight_layout()
+    plt.savefig(output_path)
+    plt.close()
 
 
 
