@@ -85,7 +85,7 @@ def write_output_fasta(sequences, domain_regions_list, output_path):
     for sequence, domain_regions in zip(sequences, domain_regions_list):
         domain_names = [domain_name for _, _, domain_name in domain_regions]
         domain_string = ";".join(domain_names)
-        new_id = f"{sequence.id}_domains:{domain_string}"
+        new_id = f"{sequence.id}_domains__{domain_string}"
         output_seq = SeqRecord(sequence.seq, id=new_id, description="")
         output_sequences.append(output_seq)
 
