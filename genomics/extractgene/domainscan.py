@@ -22,7 +22,7 @@ def scan_domains(sequence, hmm_file, threads, evalue):
         output_file = tempfile.NamedTemporaryFile(mode="r", delete=False)
         log_file = os.path.join(args.output, "hmmscan.log")
 
-        with open(log_file, "w") as log:
+        with open(log_file, "a") as log:  # Changed "w" to "a" to append to the log file
             print(f"Running hmmscan on sequence {sequence.id}")
             subprocess.run([
                 "hmmscan",
@@ -60,6 +60,8 @@ def draw_sequence_graphics(sequences, domain_regions_list, output_path, output_p
                 label_text = f"{domain_name}: {start}-{end}"
                 ax.axvspan(start, end, color=plt.cm.viridis(float(i) / len(domain_regions)), alpha=0.5, label=label_text)
             ax.legend(loc='upper right', fontsize='small')
+        else:
+            ax.text(0.5, 0.5, "No domains found", fontsize=12, ha='center', va='center', transform=ax.transAxes)
 
         ax.set_xlim(0, len(sequence))
         ax.set_ylim(0, 1)
@@ -68,11 +70,12 @@ def draw_sequence_graphics(sequences, domain_regions_list, output_path, output_p
 
     plt.tight_layout()
     plt.savefig(output_path)
-    
+
     with PdfPages(output_pdf) as pdf:
         pdf.savefig(fig)
-    
+
     plt.close()
+
 
 def write_output_fasta(sequences, domain_regions_list, output_path):
     output_sequences = []
@@ -81,11 +84,12 @@ def write_output_fasta(sequences, domain_regions_list, output_path):
         domain_names = [domain_name for _, _, domain_name in domain_regions]
         domain_string = ";".join(domain_names)
         new_id = f"{sequence.id}_domains:{domain_string}"
-        output_seq = SeqRecord(sequence.seq, id=new_id, description=sequence.description)
+        output_seq = SeqRecord(sequence.seq, id=new_id, description="")
         output_sequences.append(output_seq)
 
     with open(output_path, "w") as output_file:
         SeqIO.write(output_sequences, output_file, "fasta")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
