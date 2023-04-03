@@ -88,29 +88,26 @@ def write_output_fasta(sequences, domain_regions_list, output_path):
     with open(output_path, "w") as output_file:
         SeqIO.write(output_sequences, output_file, "fasta")
 
-    if __name__ == "__main__":
-        parser = argparse.ArgumentParser()
-        parser.add_argument("-i", "--input", help="Path to the input FASTA file", required=True)
-        parser.add_argument("-o", "--output", help="Path to the output directory", required=True)
-        parser.add_argument("-hmm", "--hmm", help="Path to the HMM file", required=True)
-        parser.add_argument("-e", "--evalue", help="E-value threshold for hmmscan", default=10.0, type=float)
-        parser.add_argument("-t", "--threads", help="Number of threads to use for hmmscan", default=1, type=int)
-        args = parser.parse_args()
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-i", "--input", help="Path to the input FASTA file", required=True)
+    parser.add_argument("-o", "--output", help="Path to the output directory", required=True)
+    parser.add_argument("-hmm", "--hmm", help="Path to the HMM file", required=True)
+    parser.add_argument("-e", "--evalue", help="E-value threshold for hmmscan", default=10.0, type=float)
+    parser.add_argument("-t", "--threads", help="Number of threads to use for hmmscan", default=1, type=int)
+    args = parser.parse_args()
 
-        os.makedirs(args.output, exist_ok=True)
-        sequences = parse_fasta(args.input)
+    os.makedirs(args.output, exist_ok=True)
+    sequences = parse_fasta(args.input)
 
-        all_domain_regions = []
-        for seq in sequences:
-            domain_regions = scan_domains(seq, args.hmm, args.threads, args.evalue)
-            if not domain_regions:
-                raise ValueError(f"No domain regions found for sequence {seq.id}.")
-            all_domain_regions.append(domain_regions)
+    all_domain_regions = []
+    for seq in sequences:
+        domain_regions = scan_domains(seq, args.hmm, args.threads, args.evalue)
+        all_domain_regions.append(domain_regions)
 
-        output_graphics = os.path.join(args.output, "output_graphics.png")
-        output_pdf = os.path.join(args.output, "output_graphics.pdf")
-        draw_sequence_graphics(sequences, all_domain_regions, output_graphics, output_pdf)
+    output_graphics = os.path.join(args.output, "output_graphics.png")
+    output_pdf = os.path.join(args.output, "output_graphics.pdf")
+    draw_sequence_graphics(sequences, all_domain_regions, output_graphics, output_pdf)
 
-        output_fasta = os.path.join(args.output, "output_sequences.fasta")
-        write_output_fasta(sequences, all_domain_regions, output_fasta)
-
+    output_fasta = os.path.join(args.output, "output_sequences.fasta")
+    write_output_fasta(sequences, all_domain_regions, output_fasta)
