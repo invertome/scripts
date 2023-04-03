@@ -21,6 +21,7 @@ def scan_domains(sequence, hmm_file, threads, evalue):
         log_file = os.path.join(args.output, "hmmscan.log")
 
         with open(log_file, "w") as log:
+            print(f"Running hmmscan on sequence {sequence.id}")
             subprocess.run([
                 "hmmscan",
                 "--tblout", output_file.name,
@@ -35,6 +36,8 @@ def scan_domains(sequence, hmm_file, threads, evalue):
         with open(output_file.name, "r") as tblout:
             for line in tblout:
                 if not line.startswith("#"):
+                    if len(line.strip()) == 0:
+                        raise ValueError("Empty line found in the tblout file.")
                     columns = line.strip().split()
                     if len(columns) >= 7:
                         start, end = int(columns[17]), int(columns[18])
@@ -99,6 +102,8 @@ def write_output_fasta(sequences, domain_regions_list, output_path):
         all_domain_regions = []
         for seq in sequences:
             domain_regions = scan_domains(seq, args.hmm, args.threads, args.evalue)
+            if not domain_regions:
+                raise ValueError(f"No domain regions found for sequence {seq.id}.")
             all_domain_regions.append(domain_regions)
 
         output_graphics = os.path.join(args.output, "output_graphics.png")
