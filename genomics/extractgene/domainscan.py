@@ -41,7 +41,7 @@ def scan_domains(sequence, hmm_file, threads, evalue):
                         raise ValueError("Empty line found in the tblout file.")
                     columns = line.strip().split()
                     if len(columns) >= 7:
-                        start, end = int(columns[17]), int(columns[18])
+                        start, end = int(columns[19]), int(columns[20])
                         domain_name = columns[0]
                         domain_regions.append((start, end, domain_name))
 
