@@ -38,10 +38,10 @@ def scan_domains(sequence, hmm_file, threads, evalue):
         with open(output_file.name, "r") as tblout:
             for line in tblout:
                 if not line.startswith("#"):
-                    columns = re.split(r'\s+', line.strip())  # Update this line
-                    if len(columns) >= 7:
-                        start, end = int(columns[17]), int(columns[18])
-                        domain_name = columns[0]
+                    start_end_match = re.search(r'(\d+)\s+(\d+)\s+[\.]+\s+[\.]+', line)
+                    if start_end_match:
+                        start, end = int(start_end_match.group(1)), int(start_end_match.group(2))
+                        domain_name = line.split()[0]
                         domain_regions.append((start, end, domain_name))
 
         os.remove(temp_fasta.name)
