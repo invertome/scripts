@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import argparse
 import subprocess
@@ -37,11 +38,9 @@ def scan_domains(sequence, hmm_file, threads, evalue):
         with open(output_file.name, "r") as tblout:
             for line in tblout:
                 if not line.startswith("#"):
-                    if len(line.strip()) == 0:
-                        raise ValueError("Empty line found in the tblout file.")
-                    columns = line.strip().split()
+                    columns = re.split(r'\s+', line.strip())  # Update this line
                     if len(columns) >= 7:
-                        start, end = int(columns[19]), int(columns[20])
+                        start, end = int(columns[17]), int(columns[18])
                         domain_name = columns[0]
                         domain_regions.append((start, end, domain_name))
 
