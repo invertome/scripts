@@ -12,33 +12,39 @@ def parse_fasta(file_path):
     with open(file_path, 'r') as fasta_file:
         return list(SeqIO.parse(fasta_file, 'fasta'))
 
-def scan_domains(sequence, hmm_file):
-    with open("temp_sequence.fasta", "w") as temp_file:
-        SeqIO.write(sequence, temp_file, "fasta")
+def scan_domains(sequence, hmm_file, threads, evalue):
+    with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_fasta:
+        SeqIO.write(sequence, temp_fasta, "fasta")
+        temp_fasta.flush()
 
-    output_path = os.path.join(args.output, "hmmer_out")
-    os.makedirs(output_path, exist_ok=True)
+        output_file = tempfile.NamedTemporaryFile(mode="r", delete=False)
+        log_file = os.path.join(args.output, "hmmscan.log")
 
-    subprocess.run([
-        "hmmsearch",
-        "--tblout", os.path.join(output_path, f"{sequence.id}.tblout"),
-        hmm_file,
-        "temp_sequence.fasta"
-    ])
+        with open(log_file, "w") as log:
+            subprocess.run([
+                "hmmscan",
+                "--tblout", output_file.name,
+                "-E", str(evalue),
+                "--cpu", str(threads),
+                hmm_file,
+                temp_fasta.name
+            ], stdout=log, stderr=subprocess.STDOUT)
 
-    os.remove("temp_sequence.fasta")
+        domain_regions = []
 
-    domains = []
+        with open(output_file.name, "r") as tblout:
+            for line in tblout:
+                if not line.startswith("#"):
+                    columns = line.strip().split()
+                    if len(columns) >= 7:
+                        start, end = int(columns[17]), int(columns[18])
+                        domain_name = columns[0]
+                        domain_regions.append((start, end, domain_name))
 
-    with open(os.path.join(output_path, f"{sequence.id}.tblout"), "r") as tblout_file:
-        for line in tblout_file:
-            if not line.startswith("#"):
-                columns = line.strip().split()
-                if len(columns) >= 19:
-                    target_name, accession, tlen, query_name, accession2, qlen, seq_evalue, seq_score, seq_bias, domain_num, domain_total, c_evalue, i_evalue, dom_score, dom_bias, hmm_start, hmm_end, ali_start, ali_end = columns[:19]
-                    domains.append((int(ali_start) - 1, int(ali_end), query_name))
+        os.remove(temp_fasta.name)
+        os.remove(output_file.name)
 
-    return domains
+    return domain_regions
 
 def draw_sequence_graphics(sequences, domain_regions_list, output_path, output_pdf):
     fig, axes = plt.subplots(len(sequences), 1, figsize=(10, len(sequences) * 2))
@@ -47,8 +53,8 @@ def draw_sequence_graphics(sequences, domain_regions_list, output_path, output_p
 
     for ax, sequence, domain_regions in zip(axes, sequences, domain_regions_list):
         if domain_regions:
-            for i, (start, end, query_name) in enumerate(domain_regions):
-                label_text = f"Domain {i+1}: {start}-{end}, {query_name}"
+            for i, (start, end, domain_name) in enumerate(domain_regions):
+                label_text = f"{domain_name}: {start}-{end}"
                 ax.axvspan(start, end, color=plt.cm.viridis(float(i) / len(domain_regions)), alpha=0.5, label=label_text)
             ax.legend(loc='upper right', fontsize='small')
 
@@ -59,45 +65,46 @@ def draw_sequence_graphics(sequences, domain_regions_list, output_path, output_p
 
     plt.tight_layout()
     plt.savefig(output_path)
-
+    
     with PdfPages(output_pdf) as pdf:
         pdf.savefig(fig)
-
+    
     plt.close()
 
 def write_output_fasta(sequences, domain_regions_list, output_path):
-    annotated_sequences = []
+    output_sequences = []
 
     for sequence, domain_regions in zip(sequences, domain_regions_list):
-        if domain_regions:
-            domain_names = [query_name for _, _, query_name in domain_regions]
-            sequence.id = f"{sequence.id} domains: {', '.join(domain_names)}"
-        annotated_sequences.append(sequence)
+        domain_names = [domain_name for _, _, domain_name in domain_regions]
+        domain_string = ";".join(domain_names)
+        new_id = f"{sequence.id}_domains:{domain_string}"
+        output_seq = SeqRecord(sequence.seq, id=new_id, description=sequence.description)
+        output_sequences.append(output_seq)
 
     with open(output_path, "w") as output_file:
-        for seq in annotated_sequences:
-            SeqIO.write(seq, output_file, "fasta")
+        SeqIO.write(output_sequences, output_file, "fasta")
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-i", "--input", help="Path to the input FASTA file", required=True)
-    parser.add_argument("-o", "--output", help="Path to the output directory", required=True)
-    parser.add_argument("-m", "--hmm", help="Path to the HMM file", required=True)
-    args = parser.parse_args()
+    if __name__ == "__main__":
+        parser = argparse.ArgumentParser()
+        parser.add_argument("-i", "--input", help="Path to the input FASTA file", required=True)
+        parser.add_argument("-o", "--output", help="Path to the output directory", required=True)
+        parser.add_argument("-hmm", "--hmm", help="Path to the HMM file", required=True)
+        parser.add_argument("-e", "--evalue", help="E-value threshold for hmmscan", default=10.0, type=float)
+        parser.add_argument("-t", "--threads", help="Number of threads to use for hmmscan", default=1, type=int)
+        args = parser.parse_args()
 
-    os.makedirs(args.output, exist_ok=True)
+        os.makedirs(args.output, exist_ok=True)
+        sequences = parse_fasta(args.input)
 
-    sequences = parse_fasta(args.input)
+        all_domain_regions = []
+        for seq in sequences:
+            domain_regions = scan_domains(seq, args.hmm, args.threads, args.evalue)
+            all_domain_regions.append(domain_regions)
 
-    all_domain_regions = []
-    for seq in sequences:
-        domain_regions = scan_domains(seq, args.hmm)
-        all_domain_regions.append(domain_regions)
+        output_graphics = os.path.join(args.output, "output_graphics.png")
+        output_pdf = os.path.join(args.output, "output_graphics.pdf")
+        draw_sequence_graphics(sequences, all_domain_regions, output_graphics, output_pdf)
 
-    output_graphics = os.path.join(args.output, "output_graphics.png")
-    output_pdf = os.path.join(args.output, "output_graphics.pdf")
-    draw_sequence_graphics(sequences, all_domain_regions, output_graphics, output_pdf)
-
-    output_fasta = os.path.join(args.output, "output_sequences.fasta")
-    write_output_fasta(sequences, all_domain_regions, output_fasta)
+        output_fasta = os.path.join(args.output, "output_sequences.fasta")
+        write_output_fasta(sequences, all_domain_regions, output_fasta)
 
