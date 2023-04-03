@@ -38,15 +38,17 @@ def scan_domains(sequence, hmm_file, threads, evalue):
         with open(output_file.name, "r") as tblout:
             for line in tblout:
                 if not line.startswith("#"):
-                    columns = line.strip().split()
-                    start, end = int(columns[17]), int(columns[18])
-                    domain_name = columns[0]
-                    domain_regions.append((start, end, domain_name))
+                    match = re.search(r'(\S+)\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+(\d+)\s+(\d+)', line)
+                    if match:
+                        domain_name = match.group(1)
+                        start, end = int(match.group(2)), int(match.group(3))
+                        domain_regions.append((start, end, domain_name))
 
         os.remove(temp_fasta.name)
         os.remove(output_file.name)
 
     return domain_regions
+
 
 
 def draw_sequence_graphics(sequences, domain_regions_list, output_path, output_pdf):
