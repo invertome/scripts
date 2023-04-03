@@ -38,16 +38,16 @@ def scan_domains(sequence, hmm_file, threads, evalue):
         with open(output_file.name, "r") as tblout:
             for line in tblout:
                 if not line.startswith("#"):
-                    start_end_match = re.search(r'(\d+)\s+(\d+)\s+[\.]+\s+[\.]+', line)
-                    if start_end_match:
-                        start, end = int(start_end_match.group(1)), int(start_end_match.group(2))
-                        domain_name = line.split()[0]
-                        domain_regions.append((start, end, domain_name))
+                    columns = line.strip().split()
+                    start, end = int(columns[17]), int(columns[18])
+                    domain_name = columns[0]
+                    domain_regions.append((start, end, domain_name))
 
         os.remove(temp_fasta.name)
         os.remove(output_file.name)
 
     return domain_regions
+
 
 def draw_sequence_graphics(sequences, domain_regions_list, output_path, output_pdf):
     fig, axes = plt.subplots(len(sequences), 1, figsize=(10, len(sequences) * 2))
