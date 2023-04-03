@@ -68,7 +68,8 @@ def draw_sequence_graphics(sequences, domain_regions_list, output_path, output_p
         else:
             ax.text(0.5, 0.5, "No domains found", fontsize=12, ha='center', va='center', transform=ax.transAxes)
 
-        ax.set_xlim(0, len(sequence))
+        ax.set_xlim(1, len(sequence))
+        ax.set_xticks(range(1, len(sequence) + 1, max(1, len(sequence) // 10)))
         ax.set_ylim(0, 1)
         ax.set_yticks([])
         ax.set_title(sequence.id)
@@ -80,6 +81,7 @@ def draw_sequence_graphics(sequences, domain_regions_list, output_path, output_p
         pdf.savefig(fig)
 
     plt.close()
+
 
 
 
