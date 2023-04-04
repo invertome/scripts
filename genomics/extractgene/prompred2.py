@@ -137,6 +137,10 @@ if __name__ == "__main__":
         summary_file.write("#pattern_name\tsequence_name\tstart\tstop\tstrand\tscore\tp-value\tq-value\tmatched_sequence\n")
         gff_file.write("##gff-version 3\n")
 
+    # Initialize all_promoter_regions variable
+    all_promoter_regions = []
+
+    # Process each sequence        
     for seq in sequences:
         promoter_regions = predict_promoter_regions(seq, args.motif, args.threshold, fimo_output_path)
 
