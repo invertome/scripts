@@ -41,8 +41,9 @@ def predict_promoter_regions(sequence, motif_file, threshold, output_dir):
     os.makedirs(sequence_dir, exist_ok=True)
 
     # Write the sequence to a temporary FASTA file
-    with as_handle(tempfile.NamedTemporaryFile(mode='wb', delete=False)) as temp_file:
-        SeqIO.write(sequence, temp_file, "fasta")
+    temp_file = tempfile.NamedTemporaryFile(mode='w', delete=False)
+    SeqIO.write(sequence, temp_file.name, "fasta")
+    temp_file.close()
 
     # Run FIMO within the Docker container
     subprocess.run([
@@ -68,6 +69,7 @@ def predict_promoter_regions(sequence, motif_file, threshold, output_dir):
                 promoter_regions.append((start, end))
 
     return promoter_regions
+
 
 
 def write_promoter_fasta(sequences, output_path):
