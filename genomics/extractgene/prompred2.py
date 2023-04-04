@@ -151,7 +151,7 @@ if __name__ == "__main__":
         promoter_regions = predict_promoter_regions(seq, args.motif, args.threshold, seq_output_path)
 
        # Append fimo.tsv and fimo.gff content to summary files
-        with open(os.path.join(fimo_output_path, "fimo.tsv"), "r") as fimo_tsv, open(os.path.join(args.output, f"{seq.id}_fimo.gff"), "r") as fimo_gff, open(summary_tsv, "a") as summary_file, open(combined_gff, "a") as gff_file:
+        with open(os.path.join(seq_output_path, "fimo.tsv"), "r") as fimo_tsv, open(os.path.join(args.output, f"{seq.id}_fimo.gff"), "r") as fimo_gff, open(summary_tsv, "a") as summary_file, open(combined_gff, "a") as gff_file:
             fimo_tsv.readline()  # Skip header
             fimo_gff.readline()  # Skip header
 
