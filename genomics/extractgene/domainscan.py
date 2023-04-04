@@ -62,8 +62,7 @@ def draw_sequence_graphics(sequences, domain_regions_list, output_path, output_p
         if domain_regions:
             for i, (start, end, domain_name) in enumerate(domain_regions):
                 label_text = f"{domain_name}: {start}-{end}"
-                rect = patches.Rectangle((start, 0), end-start, 1, color=plt.cm.viridis(float(i) / len(domain_regions)), alpha=0.5, label=label_text)
-                ax.add_patch(rect)
+                ax.axvspan(start, end, color=plt.cm.viridis(float(i) / len(domain_regions)), alpha=0.5, label=label_text)
             ax.legend(loc='upper right', fontsize='small')
         else:
             ax.text(0.5, 0.5, "No domains found", fontsize=12, ha='center', va='center', transform=ax.transAxes)
@@ -80,6 +79,7 @@ def draw_sequence_graphics(sequences, domain_regions_list, output_path, output_p
         pdf.savefig(fig)
 
     plt.close()
+
 
 
 
