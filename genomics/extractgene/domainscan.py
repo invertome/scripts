@@ -6,6 +6,7 @@ import subprocess
 import tempfile
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+
 from matplotlib.backends.backend_pdf import PdfPages
 from Bio import SeqIO
 from Bio.Seq import Seq
@@ -60,16 +61,14 @@ def draw_sequence_graphics(sequences, domain_regions_list, output_path, output_p
     for ax, sequence, domain_regions in zip(axes, sequences, domain_regions_list):
         if domain_regions:
             for i, (start, end, domain_name) in enumerate(domain_regions):
-                width = end - start + 1
                 label_text = f"{domain_name}: {start}-{end}"
-                rect = patches.Rectangle((start, 0), width, 1, linewidth=1, edgecolor='none', facecolor=plt.cm.viridis(float(i) / len(domain_regions)), alpha=0.5, label=label_text)
+                rect = patches.Rectangle((start, 0), end-start, 1, color=plt.cm.viridis(float(i) / len(domain_regions)), alpha=0.5, label=label_text)
                 ax.add_patch(rect)
             ax.legend(loc='upper right', fontsize='small')
         else:
             ax.text(0.5, 0.5, "No domains found", fontsize=12, ha='center', va='center', transform=ax.transAxes)
 
-        ax.set_xlim(1, len(sequence))
-        ax.set_xticks(range(1, len(sequence) + 1, max(1, len(sequence) // 10)))
+        ax.set_xlim(0, len(sequence))
         ax.set_ylim(0, 1)
         ax.set_yticks([])
         ax.set_title(sequence.id)
@@ -81,6 +80,7 @@ def draw_sequence_graphics(sequences, domain_regions_list, output_path, output_p
         pdf.savefig(fig)
 
     plt.close()
+
 
 
 
