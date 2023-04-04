@@ -71,7 +71,7 @@ def write_promoter_fasta(sequences, output_path):
             SeqIO.write(seq, output_file, "fasta")
 
 def draw_sequence_graphics(sequences, promoter_regions_list, output_path, output_pdf, no_motif_file):
-    fig, axes = plt.subplots(len(sequences), 1, figsize=(10, len(sequences) * 4))  # Increase the figure height
+    fig, axes = plt.subplots(len(sequences), 1, figsize=(10, len(sequences) * 2))
     if len(sequences) == 1:
         axes = [axes]
 
@@ -82,22 +82,23 @@ def draw_sequence_graphics(sequences, promoter_regions_list, output_path, output
                     motif_sequence = str(sequence.seq[start:end])
                     label_text = f"Motif {i+1}: {start}-{end}, {motif_sequence}"
                     ax.axvspan(start, end, color=plt.cm.viridis(float(i) / len(promoter_regions)), alpha=0.5, label=label_text)
-                ax.legend(loc='upper right', fontsize='x-small')  # Reduce the fontsize
+                ax.legend(loc='upper right', fontsize='small')
             else:
                 no_motif.write(f"{sequence.id}\n")
 
             ax.set_xlim(0, len(sequence))
             ax.set_ylim(0, 1)
             ax.set_yticks([])
-            ax.set_title(sequence.id, fontsize='small')  # Reduce the fontsize
+            ax.set_title(sequence.id)
 
-        plt.tight_layout(h_pad=3)  # Add spacing between subplots with the h_pad parameter
-        plt.savefig(output_path)
+    plt.subplots_adjust(hspace=0.5)  # Add spacing between subplots with the hspace parameter
+    plt.savefig(output_path)
 
-        with PdfPages(output_pdf) as pdf:
-            pdf.savefig(fig)
+    with PdfPages(output_pdf) as pdf:
+        pdf.savefig(fig)
 
-        plt.close()
+    plt.close()
+
 
 
 
