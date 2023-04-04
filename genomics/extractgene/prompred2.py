@@ -144,7 +144,7 @@ if __name__ == "__main__":
             promoter_sequences.append(promoter_seq)
 
         # Write the promoter sequences to the output FASTA file
-        output_fasta = os.path.join(args.output, "motif_sequences.fasta")
+        output_fasta = os.path.join(os.path.abspath(args.output), "motif_sequences.fasta")
         write_promoter_fasta(promoter_sequences, output_fasta)
 
         # Draw sequence graphics
