@@ -52,7 +52,6 @@ def scan_domains(sequence, hmm_file, threads, evalue):
     return domain_regions
 
 
-
 def draw_sequence_graphics(sequences, domain_regions_list, output_path, output_pdf):
     fig, axes = plt.subplots(len(sequences), 1, figsize=(10, len(sequences) * 2))
     if len(sequences) == 1:
@@ -62,9 +61,7 @@ def draw_sequence_graphics(sequences, domain_regions_list, output_path, output_p
         if domain_regions:
             for i, (start, end, domain_name) in enumerate(domain_regions):
                 label_text = f"{domain_name}: {start}-{end}"
-                rect = patches.Rectangle((start, 0), end - start, 1, linewidth=0, edgecolor=None,
-                                         facecolor=plt.cm.viridis(float(i) / len(domain_regions)), alpha=0.5, label=label_text)
-                ax.add_patch(rect)
+                ax.fill_between([start, end], 0, 1, color=plt.cm.viridis(float(i) / len(domain_regions)), alpha=0.5, label=label_text)
             ax.legend(loc='upper right', fontsize='small')
         else:
             ax.text(0.5, 0.5, "No domains found", fontsize=12, ha='center', va='center', transform=ax.transAxes)
@@ -81,10 +78,6 @@ def draw_sequence_graphics(sequences, domain_regions_list, output_path, output_p
         pdf.savefig(fig)
 
     plt.close()
-
-
-
-
 
 
 def write_output_fasta(sequences, domain_regions_list, output_path):
