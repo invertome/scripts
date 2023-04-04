@@ -63,8 +63,6 @@ def predict_promoter_regions(sequence, motif_file, threshold, output_dir):
     return promoter_regions
 
 
-
-
 def write_promoter_fasta(sequences, output_dir):
     """
     Write a FASTA file containing the promoter sequences.
@@ -78,6 +76,7 @@ def write_promoter_fasta(sequences, output_dir):
             motif_id = seq.id.split("_")[-1]
             seq.id = f"{seq.id.split(':')[0]}_{motif_id}"
             SeqIO.write(seq, output_file, "fasta")
+
 
 
 def draw_sequence_graphics(sequences, promoter_regions_list, output_path, output_pdf, no_motif_file):
