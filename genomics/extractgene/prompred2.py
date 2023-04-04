@@ -7,6 +7,7 @@ import tempfile
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 from Bio import SeqIO
+from Bio.File import as_handle
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio.SeqFeature import SeqFeature, FeatureLocation
@@ -40,7 +41,7 @@ def predict_promoter_regions(sequence, motif_file, threshold, output_dir):
     os.makedirs(sequence_dir, exist_ok=True)
 
     # Write the sequence to a temporary FASTA file
-    with tempfile.NamedTemporaryFile(mode='wb', delete=False) as temp_file:
+    with as_handle(tempfile.NamedTemporaryFile(mode='wb', delete=False)) as temp_file:
         SeqIO.write(sequence, temp_file, "fasta")
 
     # Run FIMO within the Docker container
