@@ -79,6 +79,7 @@ def write_promoter_fasta(sequences, output_dir):
 
 
 
+
 def draw_sequence_graphics(sequences, promoter_regions_list, output_path, output_pdf, no_motif_file):
     fig, axes = plt.subplots(len(sequences), 1, figsize=(10, len(sequences) * 2))
     if len(sequences) == 1:
