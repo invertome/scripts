@@ -117,13 +117,14 @@ if __name__ == "__main__":
     parser.add_argument("-t", "--threshold", help="FIMO threshold value", required=True, type=float)
     args = parser.parse_args()
 
+
     # Create output folders
     os.makedirs(args.output, exist_ok=True)
     output_graphics = os.path.join(args.output, "graphics")
     os.makedirs(output_graphics, exist_ok=True)
 
-    fimo_output_path = os.path.join(args.output, "fimo_out")
-    os.makedirs(fimo_output_path, exist_ok=True)
+    fimo_out_main = os.path.join(args.output, "fimo_out")
+    os.makedirs(fimo_out_main, exist_ok=True)
 
     # Load sequences from the input FASTA file
     sequences = parse_fasta(args.input)
@@ -143,9 +144,13 @@ if __name__ == "__main__":
 
     # Process each sequence        
     for seq in sequences:
-        promoter_regions = predict_promoter_regions(seq, args.motif, args.threshold, fimo_output_path)
+        # Create an output folder for each sequence within the fimo_out subfolder
+        seq_output_path = os.path.join(fimo_out_main, seq.id)
+        os.makedirs(seq_output_path, exist_ok=True)
 
-        # Append fimo.tsv and fimo.gff content to summary files
+        promoter_regions = predict_promoter_regions(seq, args.motif, args.threshold, seq_output_path)
+
+       # Append fimo.tsv and fimo.gff content to summary files
         with open(os.path.join(fimo_output_path, "fimo.tsv"), "r") as fimo_tsv, open(os.path.join(args.output, f"{seq.id}_fimo.gff"), "r") as fimo_gff, open(summary_tsv, "a") as summary_file, open(combined_gff, "a") as gff_file:
             fimo_tsv.readline()  # Skip header
             fimo_gff.readline()  # Skip header
@@ -168,11 +173,8 @@ if __name__ == "__main__":
             os.remove(individual_gff_file)
      
 
-    # Remove fimo_output and graphics folders from the main output directory
-    fimo_output_path = os.path.join(args.output, "fimo_out")
+    # Remove graphics folders from the main output directory
     output_graphics = os.path.join(args.output, "graphics")
-    if os.path.exists(fimo_output_path):
-        shutil.rmtree(fimo_output_path)
     if os.path.exists(output_graphics):
         shutil.rmtree(output_graphics)
     
