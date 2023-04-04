@@ -33,9 +33,8 @@ def predict_promoter_regions(sequence, motif_file, threshold, output_dir):
     :return: List of (start, end) tuples representing promoter regions
     """
     # Write the sequence to a temporary FASTA file
-    with tempfile.NamedTemporaryFile(dir=output_dir, suffix='.fasta', delete=False) as temp_file:
-        SeqIO.write(sequence, temp_file, "fasta")
-        seq_file_path = temp_file.name
+    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+        SeqIO.write(sequence, temp_file.name, "fasta")
 
     # Run FIMO within the Docker container
     fimo_output_path = os.path.join(output_dir, "fimo_out")
@@ -46,11 +45,10 @@ def predict_promoter_regions(sequence, motif_file, threshold, output_dir):
         "--thresh", str(threshold),
         "--oc", f"/home/meme/{fimo_output_path}",
         "/home/meme/" + motif_file,
-        seq_file_path
+        temp_file.name
     ])
 
-    # Remove the temporary sequence file
-    os.remove(seq_file_path)
+    os.remove(temp_file.name)
 
     promoter_regions = []
 
@@ -63,6 +61,7 @@ def predict_promoter_regions(sequence, motif_file, threshold, output_dir):
                 promoter_regions.append((start, end))
 
     return promoter_regions
+
 
 
 
