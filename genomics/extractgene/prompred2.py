@@ -71,7 +71,7 @@ def write_promoter_fasta(sequences, output_path):
             SeqIO.write(seq, output_file, "fasta")
 
 def draw_sequence_graphics(sequences, promoter_regions_list, output_path, output_pdf, no_motif_file):
-    fig, axes = plt.subplots(len(sequences), 1, figsize=(10, len(sequences) * 3))  # Increase the figure height
+    fig, axes = plt.subplots(len(sequences), 1, figsize=(10, len(sequences) * 4))  # Increase the figure height
     if len(sequences) == 1:
         axes = [axes]
 
