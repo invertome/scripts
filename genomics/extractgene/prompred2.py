@@ -71,7 +71,7 @@ def write_promoter_fasta(sequences, output_path):
             SeqIO.write(seq, output_file, "fasta")
 
 def draw_sequence_graphics(sequences, promoter_regions_list, output_path, output_pdf, no_motif_file):
-    fig, axes = plt.subplots(len(sequences), 1, figsize=(10, len(sequences) * 2))
+    fig, axes = plt.subplots(len(sequences), 1, figsize=(10, len(sequences) * 2.5))  # Increase the figure height
     if len(sequences) == 1:
         axes = [axes]
 
@@ -91,6 +91,10 @@ def draw_sequence_graphics(sequences, promoter_regions_list, output_path, output
             ax.set_yticks([])
             ax.set_title(sequence.id)
 
+            # Reduce the height of the subplot while keeping the same proportions
+            box = ax.get_position()
+            ax.set_position([box.x0, box.y0, box.width, box.height * 0.8])
+
     plt.subplots_adjust(hspace=0.5)  # Add spacing between subplots with the hspace parameter
     plt.savefig(output_path)
 
@@ -98,7 +102,6 @@ def draw_sequence_graphics(sequences, promoter_regions_list, output_path, output
         pdf.savefig(fig)
 
     plt.close()
-
 
 
 
