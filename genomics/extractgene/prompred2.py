@@ -71,7 +71,7 @@ def write_promoter_fasta(sequences, output_path):
             SeqIO.write(seq, output_file, "fasta")
 
 def draw_sequence_graphics(sequences, promoter_regions_list, output_path, output_pdf, no_motif_file):
-    fig, axes = plt.subplots(len(sequences), 1, figsize=(10, len(sequences) * 2))
+    fig, axes = plt.subplots(len(sequences), 1, figsize=(10, len(sequences) * 3))  # Increase the figure height
     if len(sequences) == 1:
         axes = [axes]
 
@@ -82,14 +82,14 @@ def draw_sequence_graphics(sequences, promoter_regions_list, output_path, output
                     motif_sequence = str(sequence.seq[start:end])
                     label_text = f"Motif {i+1}: {start}-{end}, {motif_sequence}"
                     ax.axvspan(start, end, color=plt.cm.viridis(float(i) / len(promoter_regions)), alpha=0.5, label=label_text)
-                ax.legend(loc='upper right', fontsize='small')
+                ax.legend(loc='upper right', fontsize='x-small')  # Reduce the fontsize
             else:
                 no_motif.write(f"{sequence.id}\n")
 
             ax.set_xlim(0, len(sequence))
             ax.set_ylim(0, 1)
             ax.set_yticks([])
-            ax.set_title(sequence.id)
+            ax.set_title(sequence.id, fontsize='small')  # Reduce the fontsize
 
         plt.tight_layout(h_pad=3)  # Add spacing between subplots with the h_pad parameter
         plt.savefig(output_path)
@@ -98,6 +98,7 @@ def draw_sequence_graphics(sequences, promoter_regions_list, output_path, output
             pdf.savefig(fig)
 
         plt.close()
+
 
 
 if __name__ == "__main__":
