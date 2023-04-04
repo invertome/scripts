@@ -139,7 +139,7 @@ if __name__ == "__main__":
     # Predict and extract promoter regions for each sequence
     promoter_sequences = []
     all_promoter_regions = []  # Added to store promoter regions for drawing graphics
-   for seq in sequences:
+    for seq in sequences:
         promoter_regions = predict_promoter_regions(seq, args.motif, args.threshold, args.output)
         all_promoter_regions.append(promoter_regions)  # Store promoter regions
         for start, end in promoter_regions:
