@@ -166,14 +166,7 @@ if __name__ == "__main__":
         individual_gff_file = os.path.join(args.output, f"{seq.id}_fimo.gff")
         if os.path.exists(individual_gff_file):
             os.remove(individual_gff_file)
-
-    # Remove fimo_output and graphics folders from the main output directory
-    fimo_output_path = os.path.join(args.output, "fimo_out")
-    output_graphics = os.path.join(args.output, "graphics")
-    if os.path.exists(fimo_output_path):
-        shutil.rmtree(fimo_output_path)
-    if os.path.exists(output_graphics):
-        shutil.rmtree(output_graphics)        
+     
 
     # Write the promoter sequences to the output FASTA file
     output_fasta = os.path.join(args.output, "motif_sequences.fasta")
