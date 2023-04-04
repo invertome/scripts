@@ -91,13 +91,14 @@ def draw_sequence_graphics(sequences, promoter_regions_list, output_path, output
             ax.set_yticks([])
             ax.set_title(sequence.id)
 
-        plt.tight_layout()
+        plt.tight_layout(h_pad=3)  # Add spacing between subplots with the h_pad parameter
         plt.savefig(output_path)
-        
+
         with PdfPages(output_pdf) as pdf:
             pdf.savefig(fig)
-        
+
         plt.close()
+
 
 if __name__ == "__main__":
     # Parse command-line arguments
