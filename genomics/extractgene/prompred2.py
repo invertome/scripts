@@ -160,6 +160,12 @@ if __name__ == "__main__":
         for start, end in promoter_regions:
             promoter_seq = SeqRecord(seq.seq[start:end], id=f"{seq.id}_motif_{start}-{end}", description=f"Motif in promoter region for {seq.id} at position {start}-{end}")
             promoter_sequences.append(promoter_seq)
+            
+    # Remove individual _fimo.gff files after creating the combined file
+    for seq in sequences:
+        individual_gff_file = os.path.join(args.output, f"{seq.id}_fimo.gff")
+        if os.path.exists(individual_gff_file):
+            os.remove(individual_gff_file)
 
     # Write the promoter sequences to the output FASTA file
     output_fasta = os.path.join(args.output, "motif_sequences.fasta")
