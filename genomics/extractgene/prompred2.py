@@ -177,6 +177,19 @@ if __name__ == "__main__":
     output_graphics = os.path.join(args.output, "graphics")
     if os.path.exists(output_graphics):
         shutil.rmtree(output_graphics)
+    fimo_gff = os.path.join(fimo_out_main, "fimo.gff")
+    fimo_xml = os.path.join(fimo_out_main, "fimo.xml")
+    fimo_html = os.path.join(fimo_out_main, "fimo.html")
+    fimo_tsv = os.path.join(fimo_out_main, "fimo.tsv")
+    cisml_xml = os.path.join(fimo_out_main, "cisml.xml")
+    if os.path.exists(fimo_gff):
+         os.remove(fimo_gff)
+         os.remove(fimo_xml)
+         os.remove(fimo_html)
+         os.remove(fimo_tsv)
+         os.remove(cisml_xml)
+
+        
     
     # Write the promoter sequences to the output FASTA file
     output_fasta = os.path.join(args.output, "motif_sequences.fasta")
