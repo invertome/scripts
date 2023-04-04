@@ -116,28 +116,28 @@ if __name__ == "__main__":
     # Load sequences from the input FASTA file
     sequences = parse_fasta(args.input)
 
-        # Predict and extract promoter regions for each sequence
-        promoter_sequences = []
-        all_promoter_regions = []  # Added to store promoter regions for drawing graphics
-        for seq in sequences:
-            seq_id = seq.id.split(':')[0]  # Use only the part before the colon for creating folders
-            output_seq_folder = os.path.join(args.output, seq_id)
-            os.makedirs(output_seq_folder, exist_ok=True)
-            fimo_output_path = os.path.join(output_seq_folder, "fimo_out")
+    # Predict and extract promoter regions for each sequence
+    promoter_sequences = []
+    all_promoter_regions = []  # Added to store promoter regions for drawing graphics
+    for seq in sequences:
+        seq_id = seq.id.split(':')[0]  # Use only the part before the colon for creating folders
+        output_seq_folder = os.path.join(args.output, seq_id)
+        os.makedirs(output_seq_folder, exist_ok=True)
+        fimo_output_path = os.path.join(output_seq_folder, "fimo_out")
 
-            promoter_regions = predict_promoter_regions(seq, args.motif, args.threshold, fimo_output_path)
-            all_promoter_regions.append(promoter_regions)  # Store promoter regions
-            for start, end in promoter_regions:
-                promoter_seq = SeqRecord(seq.seq[start:end], id=f"{seq.id}_motif_{start}-{end}", description=f"Motif in promoter region for {seq.id} at position {start}-{end}")
-                promoter_sequences.append(promoter_seq)
+        promoter_regions = predict_promoter_regions(seq, args.motif, args.threshold, fimo_output_path)
+        all_promoter_regions.append(promoter_regions)  # Store promoter regions
+        for start, end in promoter_regions:
+            promoter_seq = SeqRecord(seq.seq[start:end], id=f"{seq.id}_motif_{start}-{end}", description=f"Motif in promoter region for {seq.id} at position {start}-{end}")
+            promoter_sequences.append(promoter_seq)
 
-        # Write the promoter sequences to the output FASTA file
-        output_fasta = os.path.join(args.output, "motif_sequences.fasta")
-        os.makedirs(args.output, exist_ok=True)
-        write_promoter_fasta(promoter_sequences, output_fasta)
+    # Write the promoter sequences to the output FASTA file
+    output_fasta = os.path.join(args.output, "motif_sequences.fasta")
+    os.makedirs(args.output, exist_ok=True)
+    write_promoter_fasta(promoter_sequences, output_fasta)
 
-        # Draw sequence graphics
-        output_graphics = os.path.join(args.output, "output_graphics.png")
-        output_pdf = os.path.join(args.output, "output_graphics.pdf")
-        no_motif_file = os.path.join(args.output, "seqs_no_motifs.list")
-        draw_sequence_graphics(sequences, all_promoter_regions, output_graphics, output_pdf, no_motif_file)
+    # Draw sequence graphics
+    output_graphics = os.path.join(args.output, "output_graphics.png")
+    output_pdf = os.path.join(args.output, "output_graphics.pdf")
+    no_motif_file = os.path.join(args.output, "seqs_no_motifs.list")
+    draw_sequence_graphics(sequences, all_promoter_regions, output_graphics, output_pdf, no_motif_file)
