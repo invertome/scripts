@@ -32,29 +32,29 @@ def predict_promoter_regions(sequence, motif_file, threshold, output_dir):
     :param output_dir: Path to the output directory
     :return: List of (start, end) tuples representing promoter regions
     """
-    # Write the sequence to a temporary FASTA file in the output directory
-    with tempfile.NamedTemporaryFile(mode='w', suffix=".fasta", delete=False, dir=output_dir) as temp_file:
+    # Write the sequence to a temporary FASTA file
+    with tempfile.NamedTemporaryFile(dir=output_dir, suffix='.fasta', delete=False) as temp_file:
         SeqIO.write(sequence, temp_file, "fasta")
-        temp_file.flush()
-        temp_file_path = temp_file.name
+        seq_file_path = temp_file.name
 
     # Run FIMO within the Docker container
+    fimo_output_path = os.path.join(output_dir, "fimo_out")
     subprocess.run([
-        "docker", "run", "-v", f"{os.getcwd()}:/home/meme", "-v", f"{output_dir}:/home/meme/fimo_out",
+        "docker", "run", "-v", f"{os.getcwd()}:/home/meme",
         "memesuite/memesuite",
         "fimo",
         "--thresh", str(threshold),
-        "--oc", "/home/meme/fimo_out",
-        motif_file,
-        temp_file_path
+        "--oc", f"/home/meme/{fimo_output_path}",
+        "/home/meme/" + motif_file,
+        seq_file_path
     ])
 
-    # Remove the temporary FASTA file
-    os.remove(temp_file_path)
+    # Remove the temporary sequence file
+    os.remove(seq_file_path)
 
     promoter_regions = []
 
-    with open(os.path.join(output_dir, "fimo_out", "fimo.tsv"), "r") as fimo_output_file:
+    with open(os.path.join(fimo_output_path, "fimo.tsv"), "r") as fimo_output_file:
         fimo_output_file.readline()  # Skip header
         for line in fimo_output_file:
             columns = line.strip().split("\t")
@@ -63,6 +63,7 @@ def predict_promoter_regions(sequence, motif_file, threshold, output_dir):
                 promoter_regions.append((start, end))
 
     return promoter_regions
+
 
 
 def write_promoter_fasta(sequences, output_dir):
@@ -136,7 +137,7 @@ if __name__ == "__main__":
     promoter_sequences = []
     all_promoter_regions = []  # Added to store promoter regions for drawing graphics
     for seq in sequences:
-        promoter_regions = predict_promoter_regions(seq, args.motif, args.threshold)
+        promoter_regions = predict_promoter_regions(seq, args.motif, args.threshold, args.output)
         all_promoter_regions.append(promoter_regions)  # Store promoter regions
         for start, end in promoter_regions:
             promoter_seq_id = seq.id.split(":")[0]
