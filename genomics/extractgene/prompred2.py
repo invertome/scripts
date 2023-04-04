@@ -137,8 +137,9 @@ if __name__ == "__main__":
         summary_file.write("#pattern_name\tsequence_name\tstart\tstop\tstrand\tscore\tp-value\tq-value\tmatched_sequence\n")
         gff_file.write("##gff-version 3\n")
 
-    # Initialize all_promoter_regions variable
+    # Initialize variables
     all_promoter_regions = []
+    promoter_sequences = []
 
     # Process each sequence        
     for seq in sequences:
