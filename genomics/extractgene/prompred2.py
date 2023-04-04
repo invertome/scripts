@@ -37,7 +37,7 @@ def predict_promoter_regions(sequence, motif_file, threshold, output_dir):
     """
     # Create a directory for the output files
     sequence_id = sequence.id.split(":")[0].lstrip(">")
-    sequence_dir = os.path.join(output_dir, sequence_id)
+    sequence_dir = os.path.join(output_dir.rstrip("/"), sequence_id)
     os.makedirs(sequence_dir, exist_ok=True)
 
     # Write the sequence to a temporary FASTA file
