@@ -70,7 +70,6 @@ def predict_promoter_regions(sequence, motif_file, threshold, output_dir):
 
 
 
-
 def write_promoter_fasta(sequences, output_path):
     """
     Write a FASTA file containing the promoter sequences.
@@ -142,11 +141,12 @@ if __name__ == "__main__":
     promoter_sequences = []
     all_promoter_regions = []  # Added to store promoter regions for drawing graphics
     for seq in sequences:
-        promoter_regions = predict_promoter_regions(seq, args.motif, args.threshold)
+        promoter_regions = predict_promoter_regions(seq, args.motif, args.threshold, args.output)
         all_promoter_regions.append(promoter_regions)  # Store promoter regions
         for start, end in promoter_regions:
             promoter_seq = SeqRecord(seq.seq[start:end], id=f"{seq.id}_motif_{start}-{end}", description=f"Motif in promoter region for {seq.id} at position {start}-{end}")
             promoter_sequences.append(promoter_seq)
+
 
     # Write the promoter sequences to the output FASTA file
     output_fasta = os.path.join(args.output, "motif_sequences.fasta")
