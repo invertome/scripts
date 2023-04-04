@@ -23,51 +23,49 @@ def parse_fasta(file_path):
         return list(SeqIO.parse(fasta_file, 'fasta'))
 
 
-def predict_promoter_regions(sequence, motif_file, threshold, output_dir):
+def predict_promoter_regions(sequence, motif_file, threshold, output_path):
     """
     Use FIMO in a Docker container to predict promoter regions in the given sequence based on the provided motif file.
 
     :param sequence: A SeqRecord object containing the sequence to analyze
     :param motif_file: Path to the motif file
     :param threshold: FIMO threshold value
-    :param output_dir: Path to the output directory
+    :param output_path: Path to the output directory
     :return: List of (start, end) tuples representing promoter regions
     """
-    # Create output folder based on sequence ID (before colon)
-    sequence_id = sequence.id.split(":")[0]
-    sequence_dir = os.path.join(output_dir, sequence_id)
-    os.makedirs(sequence_dir, exist_ok=True)
+    # Create temporary directory inside the output folder
+    tempdir = tempfile.mkdtemp(dir=output_path)
 
     # Write the sequence to a temporary FASTA file
-    with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
+    with open(os.path.join(tempdir, "temp_sequence.fasta"), "w") as temp_file:
         SeqIO.write(sequence, temp_file, "fasta")
-        temp_file_path = temp_file.name
 
     # Run FIMO within the Docker container
+    fimo_output_path = os.path.join(output_path, "fimo_out")
     subprocess.run([
         "docker", "run", "-v", f"{os.getcwd()}:/home/meme",
         "memesuite/memesuite",
         "fimo",
         "--thresh", str(threshold),
-        "--oc", sequence_dir,
-        motif_file,
-        temp_file_path
+        "--oc", f"/home/meme/{fimo_output_path}",
+        "/home/meme/" + motif_file,
+        os.path.join(tempdir, "temp_sequence.fasta")
     ])
 
-    os.remove(temp_file_path)
+    os.remove(os.path.join(tempdir, "temp_sequence.fasta"))
 
     promoter_regions = []
 
-    # Read the FIMO output file and extract promoter regions
-    fimo_output_file_path = os.path.join(sequence_dir, "fimo.tsv")
-    if os.path.exists(fimo_output_file_path):
-        with open(fimo_output_file_path, "r") as fimo_output_file:
-            fimo_output_file.readline()  # Skip header
-            for line in fimo_output_file:
-                columns = line.strip().split("\t")
-                if len(columns) >= 5:
-                    start, end = int(columns[3]) - 1, int(columns[4])
-                    promoter_regions.append((start, end))
+    with open(os.path.join(fimo_output_path, "fimo.tsv"), "r") as fimo_output_file:
+        fimo_output_file.readline()  # Skip header
+        for line in fimo_output_file:
+            columns = line.strip().split("\t")
+            if len(columns) >= 5:
+                start, end = int(columns[3]) - 1, int(columns[4])
+                promoter_regions.append((start, end))
+
+    # Remove the temporary directory
+    shutil.rmtree(tempdir)
 
     return promoter_regions
 
@@ -81,12 +79,10 @@ def write_promoter_fasta(sequences, output_path):
     """
     with open(output_path, "w") as output_file:
         for seq in sequences:
-            # Replace description after colon with ID of matching motif
-            seq.id = seq.id.split(":")[0] + "_" + seq.description.split("_")[-2]
             SeqIO.write(seq, output_file, "fasta")
 
 
-def draw_sequence_graphics(sequences, promoter_regions_list, output_path, output_pdf, no_motif_file):
+def draw_sequence_graphics(sequences, promoter_regions_list, output_path, output_pdf, no_motif_file, output_dir):
     fig, axes = plt.subplots(len(sequences), 1, figsize=(10, len(sequences) * 2))
     if len(sequences) == 1:
         axes = [axes]
@@ -115,39 +111,16 @@ def draw_sequence_graphics(sequences, promoter_regions_list, output_path, output
         
         plt.close()
 
-if __name__ == "__main__":
-    # Parse command-line arguments
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-i", "--input", help="Path to the input FASTA file", required=True)
-    parser.add_argument("-o", "--output", help="Path to the output directory", required=True)
-    parser.add_argument("-m", "--motif", help="Path to the motif file", required=True)
-    parser.add_argument("-t", "--threshold", help="FIMO threshold value", required=True, type=float)
-    args = parser.parse_args()
-
-    # Create output folders
-    os.makedirs(args.output, exist_ok=True)
-    output_graphics = os.path.join(args.output, "graphics")
-    os.makedirs(output_graphics, exist_ok=True)
-    
-    # Load sequences from the input FASTA file
-    sequences = parse_fasta(args.input)
-
-    # Predict and extract promoter regions for each sequence
-    promoter_sequences = []
-    all_promoter_regions = []  # Added to store promoter regions for drawing graphics
-    for seq in sequences:
-        promoter_regions = predict_promoter_regions(seq, args.motif, args.threshold, args.output)
-        all_promoter_regions.append(promoter_regions)  # Store promoter regions
-        for start, end in promoter_regions:
-            promoter_seq = SeqRecord(seq.seq[start:end], id=f"{seq.id.split(':')[0]}_motif_{start}-{end}", description=f"Motif {start}-{end}")
-            promoter_sequences.append(promoter_seq)
 
     # Write the promoter sequences to the output FASTA file
-    output_fasta = os.path.join(args.output, "motif_sequences.fasta")
+    os.makedirs(output_dir, exist_ok=True)
+    output_fasta = os.path.join(output_dir, "motif_sequences.fasta")
     write_promoter_fasta(promoter_sequences, output_fasta)
-    
+
     # Draw sequence graphics
-    output_graphics = os.path.join(args.output, "output_graphics.png")
-    output_pdf = os.path.join(args.output, "output_graphics.pdf")
-    no_motif_file = os.path.join(args.output, "seqs_no_motifs.list")
-    draw_sequence_graphics(sequences, all_promoter_regions, output_graphics, output_pdf, no_motif_file)
+    output_graphics = os.path.join(output_dir, "output_graphics.png")
+    output_pdf = os.path.join(output_dir, "output_graphics.pdf")
+    no_motif_file = os.path.join(output_dir, "seqs_no_motifs.list")
+    draw_sequence_graphics(sequences, all_promoter_regions, output_graphics, output_pdf, no_motif_file, output_dir)
+
+    print("Done!")
