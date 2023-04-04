@@ -147,7 +147,6 @@ if __name__ == "__main__":
             promoter_sequences.append(promoter_seq)
 
 
-
     # Write the promoter sequences to the output FASTA file
     output_fasta = os.path.join(args.output, "motif_sequences.fasta")
     os.makedirs(args.output, exist_ok=True)
