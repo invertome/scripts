@@ -7,12 +7,9 @@ import tempfile
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 from Bio import SeqIO
-from Bio.File import as_handle
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio.SeqFeature import SeqFeature, FeatureLocation
-
-
 
 
 def parse_fasta(file_path):
@@ -25,6 +22,7 @@ def parse_fasta(file_path):
     with open(file_path, 'r') as fasta_file:
         return list(SeqIO.parse(fasta_file, 'fasta'))
 
+
 def predict_promoter_regions(sequence, motif_file, threshold, output_dir):
     """
     Use FIMO in a Docker container to predict promoter regions in the given sequence based on the provided motif file.
@@ -35,15 +33,15 @@ def predict_promoter_regions(sequence, motif_file, threshold, output_dir):
     :param output_dir: Path to the output directory
     :return: List of (start, end) tuples representing promoter regions
     """
-    # Create a directory for the output files
-    sequence_id = sequence.id.split(":")[0].lstrip(">")
-    sequence_dir = os.path.join(output_dir.rstrip("/"), sequence_id)
+    # Create output folder based on sequence ID (before colon)
+    sequence_id = sequence.id.split(":")[0]
+    sequence_dir = os.path.join(output_dir, sequence_id)
     os.makedirs(sequence_dir, exist_ok=True)
 
     # Write the sequence to a temporary FASTA file
-    temp_file = tempfile.NamedTemporaryFile(mode='w', delete=False)
-    SeqIO.write(sequence, temp_file.name, "fasta")
-    temp_file.close()
+    with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
+        SeqIO.write(sequence, temp_file, "fasta")
+        temp_file_path = temp_file.name
 
     # Run FIMO within the Docker container
     subprocess.run([
@@ -52,24 +50,26 @@ def predict_promoter_regions(sequence, motif_file, threshold, output_dir):
         "fimo",
         "--thresh", str(threshold),
         "--oc", sequence_dir,
-        "/home/meme/" + motif_file,
-        temp_file.name
+        motif_file,
+        temp_file_path
     ])
 
-    os.remove(temp_file.name)
+    os.remove(temp_file_path)
 
     promoter_regions = []
 
-    with open(os.path.join(sequence_dir, "fimo.tsv"), "r") as fimo_output_file:
-        fimo_output_file.readline()  # Skip header
-        for line in fimo_output_file:
-            columns = line.strip().split("\t")
-            if len(columns) >= 5:
-                start, end = int(columns[3]) - 1, int(columns[4])
-                promoter_regions.append((start, end))
+    # Read the FIMO output file and extract promoter regions
+    fimo_output_file_path = os.path.join(sequence_dir, "fimo.tsv")
+    if os.path.exists(fimo_output_file_path):
+        with open(fimo_output_file_path, "r") as fimo_output_file:
+            fimo_output_file.readline()  # Skip header
+            for line in fimo_output_file:
+                columns = line.strip().split("\t")
+                if len(columns) >= 5:
+                    start, end = int(columns[3]) - 1, int(columns[4])
+                    promoter_regions.append((start, end))
 
     return promoter_regions
-
 
 
 def write_promoter_fasta(sequences, output_path):
@@ -81,14 +81,10 @@ def write_promoter_fasta(sequences, output_path):
     """
     with open(output_path, "w") as output_file:
         for seq in sequences:
-            # Replace the description with the motif ID
-            motif_id = seq.id.split("_")[-1]
-            sequence_id = seq.id.split(":")[0].lstrip(">")
-            seq.id = f"{sequence_id}_motif_{motif_id}"
-            seq.description = f"Motif {motif_id} in promoter region for {sequence_id}"
+            # Replace description after colon with ID of matching motif
+            seq.id = seq.id.split(":")[0] + "_" + seq.description.split("_")[-2]
             SeqIO.write(seq, output_file, "fasta")
 
-           
 
 def draw_sequence_graphics(sequences, promoter_regions_list, output_path, output_pdf, no_motif_file):
     fig, axes = plt.subplots(len(sequences), 1, figsize=(10, len(sequences) * 2))
@@ -119,9 +115,6 @@ def draw_sequence_graphics(sequences, promoter_regions_list, output_path, output
         
         plt.close()
 
-
-
-
 if __name__ == "__main__":
     # Parse command-line arguments
     parser = argparse.ArgumentParser()
@@ -146,13 +139,11 @@ if __name__ == "__main__":
         promoter_regions = predict_promoter_regions(seq, args.motif, args.threshold, args.output)
         all_promoter_regions.append(promoter_regions)  # Store promoter regions
         for start, end in promoter_regions:
-            promoter_seq = SeqRecord(seq.seq[start:end], id=f"{seq.id}_motif_{start}-{end}", description=f"Motif in promoter region for {seq.id} at position {start}-{end}")
+            promoter_seq = SeqRecord(seq.seq[start:end], id=f"{seq.id.split(':')[0]}_motif_{start}-{end}", description=f"Motif {start}-{end}")
             promoter_sequences.append(promoter_seq)
-
 
     # Write the promoter sequences to the output FASTA file
     output_fasta = os.path.join(args.output, "motif_sequences.fasta")
-    os.makedirs(args.output, exist_ok=True)
     write_promoter_fasta(promoter_sequences, output_fasta)
     
     # Draw sequence graphics
