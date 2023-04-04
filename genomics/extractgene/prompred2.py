@@ -56,6 +56,9 @@ def predict_promoter_regions(sequence, motif_file, threshold, fimo_output_path):
                 start, end = int(columns[3]) - 1, int(columns[4])
                 promoter_regions.append((start, end))
 
+    # Copy the fimo.gff file to main output folder
+    shutil.copy(os.path.join(fimo_output_path, "fimo.gff"), os.path.join(args.output, f"{sequence.id}_fimo.gff"))
+
     return promoter_regions
 
 def write_promoter_fasta(sequences, output_path):
@@ -119,19 +122,35 @@ if __name__ == "__main__":
     output_graphics = os.path.join(args.output, "graphics")
     os.makedirs(output_graphics, exist_ok=True)
 
+    fimo_output_path = os.path.join(args.output, "fimo_out")
+    os.makedirs(fimo_output_path, exist_ok=True)
+
     # Load sequences from the input FASTA file
     sequences = parse_fasta(args.input)
 
-    # Predict and extract promoter regions for each sequence
-    promoter_sequences = []
-    all_promoter_regions = []  # Added to store promoter regions for drawing graphics
-    for seq in sequences:
-        seq_id = seq.id.split(':')[0]  # Use only the part before the colon for creating folders
-        output_seq_folder = os.path.join(args.output, seq_id)
-        os.makedirs(output_seq_folder, exist_ok=True)
-        fimo_output_path = os.path.join(output_seq_folder, "fimo_out")
+    # Initialize summary_tsv and combined_gff files
+    summary_tsv = os.path.join(args.output, "summary_fimo.tsv")
+    combined_gff = os.path.join(args.output, "combined_fimo.gff")
+    
+    # Initialize summary_tsv and combined_gff files with header lines
+    with open(summary_tsv, "w") as summary_file, open(combined_gff, "w") as gff_file:
+        summary_file.write("#pattern_name\tsequence_name\tstart\tstop\tstrand\tscore\tp-value\tq-value\tmatched_sequence\n")
+        gff_file.write("##gff-version 3\n")
 
+    for seq in sequences:
         promoter_regions = predict_promoter_regions(seq, args.motif, args.threshold, fimo_output_path)
+
+        # Append fimo.tsv and fimo.gff content to summary files
+        with open(os.path.join(fimo_output_path, "fimo.tsv"), "r") as fimo_tsv, open(os.path.join(args.output, f"{seq.id}_fimo.gff"), "r") as fimo_gff, open(summary_tsv, "a") as summary_file, open(combined_gff, "a") as gff_file:
+            fimo_tsv.readline()  # Skip header
+            fimo_gff.readline()  # Skip header
+
+            for line in fimo_tsv:
+                summary_file.write(line)
+
+            for line in fimo_gff:
+                gff_file.write(line)
+
         all_promoter_regions.append(promoter_regions)  # Store promoter regions
         for start, end in promoter_regions:
             promoter_seq = SeqRecord(seq.seq[start:end], id=f"{seq.id}_motif_{start}-{end}", description=f"Motif in promoter region for {seq.id} at position {start}-{end}")
