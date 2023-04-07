@@ -55,23 +55,6 @@ for input_file in args.input:
     elif args.type == 'aa':
         alphabet = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y']
 
-    # Determine the background frequency
-    if args.empfreq:
-        total_counts = Counter()
-        for pos_counts in counts:
-            total_counts.update(pos_counts)
-        total_symbols = sum(total_counts.values())
-        background_freq = [total_counts[symbol] / total_symbols for symbol in alphabet]
-    elif args.bgfreq is not None:
-        background_freq = args.bgfreq
-    else:
-        background_freq = [1.0 / len(alphabet)] * len(alphabet)
-
-
-    # Convert U to T if it exists in the sequence
-    if args.type == 'nt':
-        for seq in alignment:
-            seq.seq = seq.seq.replace('U', 'T')
 
     # Compute the frequency matrix
     if args.empfreq:
@@ -84,6 +67,18 @@ for input_file in args.input:
         num_seqs = len(alignment)
         seq_length = alignment.get_alignment_length()
         freq_matrix = [[(counts[i].get(symbol, 0) + 0.25) / (num_seqs + 1) for symbol in alphabet] for i in range(seq_length)]
+
+    # Determine the background frequency
+    if args.empfreq:
+        total_counts = Counter()
+        for pos_counts in counts:
+            total_counts.update(pos_counts)
+        total_symbols = sum(total_counts.values())
+        background_freq = [total_counts[symbol] / total_symbols for symbol in alphabet]
+    elif args.bgfreq is not None:
+        background_freq = args.bgfreq
+    else:
+        background_freq = [1.0 / len(alphabet)] * len(alphabet)
 
 
     # Write the output file
