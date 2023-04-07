@@ -12,33 +12,20 @@ def count_per_position(alignment, alphabet):
     matrix = [[counts[i][symbol] for symbol in alphabet] for i in range(length)]
     return matrix
 
-# Function to determine the alphabet of the sequences (nucleotides or amino acids)
-def detect_alphabet(alignment):
-    # Define the nucleotide and amino acid alphabets
-    nucleotides = set("ACGTUacgtu")
-    amino_acids = set("ACDEFGHIKLMNPQRSTVWYacdefghiklmnpqrstvwy")
-
-    # Check if all the sequences only contain nucleotides
-    if all(set(str(seq.seq)) <= nucleotides for seq in alignment):
-        alphabet = ['A', 'C', 'G', 'T']
-    # Check if all the sequences only contain amino acids
-    elif all(set(str(seq.seq)) <= amino_acids for seq in alignment):
-        alphabet = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y']
-    # Otherwise, raise an error
-    else:
-        raise ValueError("Invalid alphabet: sequences contain both nucleotides and amino acids")
-
-    return alphabet
-
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description='Convert multiple sequence alignments to motif profile files.')
 parser.add_argument('-i', '--input', required=True, nargs='+', help='Path(s) to input FASTA file(s)')
 parser.add_argument('-o', '--output', required=True, help='Path to output folder')
 parser.add_argument('-f', '--format', choices=['meme', 'pfm', 'hmm'], default='meme', help='Output format (default: meme)')
 parser.add_argument('-n', '--name', default='unknown', help='Motif name (default: unknown)')
+parser.add_argument('-t', '--type', choices=['nt', 'aa'], required=True, help='Sequence type (nt or aa)')
 parser.add_argument('-e', '--empfreq', action='store_true', help='Use empirical symbol frequencies from the alignment')
 parser.add_argument('-b', '--bgfreq', type=float, nargs='+', default=None, help='Background symbol frequencies (default: flat frequency)')
 args = parser.parse_args()
+
+# Define the nucleotide and amino acid alphabets
+nucleotides = set("ACGTUacgtu")
+amino_acids = set("ACDEFGHIKLMNPQRSTVWYacdefghiklmnpqrstvwy")
 
 # Create the output folder if it doesn't exist
 if not os.path.exists(args.output):
@@ -58,14 +45,27 @@ for input_file in args.input:
     # Load the input alignment file
     alignment = AlignIO.read(input_file, 'fasta')
 
+    # Convert U to T if it exists in the sequence for nucleotide sequences
+    if args.type == 'nt':
+        for seq in alignment:
+            seq.seq = seq.seq.replace('U', 'T')
+
     # Determine the alphabet
-    alphabet = detect_alphabet(alignment)
+    if args.type == 'nt':
+        alphabet = ['A', 'C', 'G', 'T']
+    elif args.type == 'aa':
+        alphabet = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y']
 
     # Determine the background frequency
     if args.bgfreq is not None:
         background_freq = args.bgfreq
     else:
         background_freq = [1.0 / len(alphabet)] * len(alphabet)
+
+    # Convert U to T if it exists in the sequence
+    if args.type == 'nt':
+        for seq in alignment:
+            seq.seq = seq.seq.replace('U', 'T')
 
     # Compute the frequency matrix
     if args.empfreq:
