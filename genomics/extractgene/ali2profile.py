@@ -59,7 +59,7 @@ for input_file in args.input:
 
         # Run fasta-get-markov to compute background frequencies using the Docker container
         with NamedTemporaryFile(mode='w', delete=False, dir=args.output) as bg_freq_file:
-            subprocess.run(['docker', 'run', '-v', f'{os.getcwd()}:/home/meme', 'memesuite/memesuite', 'fasta-get-markov', os.path.basename(tmp_file.name), os.path.basename(bg_freq_file.name)], check=True)
+            subprocess.run(['docker', 'run', '-v', f'{os.getcwd()}:/home/meme', 'memesuite/memesuite', 'fasta-get-markov', os.path.join('/home/meme', os.path.relpath(tmp_file.name, os.getcwd())), os.path.join('/home/meme', os.path.relpath(bg_freq_file.name, os.getcwd()))], check=True)
             bg_freq_file.flush()
 
             for fmt in formats:
@@ -67,7 +67,7 @@ for input_file in args.input:
 
                 if fmt == 'meme':
                     # Run MEME to create a .meme file using the Docker container
-                    subprocess.run(['docker', 'run', '-v', f'{os.getcwd()}:/home/meme', 'memesuite/memesuite', 'meme', os.path.basename(tmp_file.name), '-oc', os.path.basename(output_file), '-nostatus', '-bfile', os.path.basename(bg_freq_file.name), '-dna' if args.type == 'nt' else '-protein'], check=True)
+                    subprocess.run(['docker', 'run', '-v', f'{os.getcwd()}:/home/meme', 'memesuite/memesuite', 'meme', os.path.join('/home/meme', os.path.relpath(tmp_file.name, os.getcwd())), '-oc', os.path.join('/home/meme', os.path.relpath(output_file, os.getcwd())), '-nostatus', '-bfile', os.path.join('/home/meme', os.path.relpath(bg_freq_file.name, os.getcwd())), '-dna' if args.type == 'nt' else '-protein'], check=True)
 
                 elif fmt == 'pfm':
                     # Compute the frequency matrix
