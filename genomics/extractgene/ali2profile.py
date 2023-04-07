@@ -3,6 +3,7 @@ import os
 import subprocess
 from Bio import AlignIO
 from tempfile import NamedTemporaryFile
+from collections import Counter
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description='Convert multiple sequence alignments to motif profile files.')
@@ -11,6 +12,7 @@ parser.add_argument('-o', '--output', required=True, help='Path to output folder
 parser.add_argument('-f', '--format', choices=['meme', 'pfm', 'hmm'], default='meme', help='Output format (default: meme)')
 parser.add_argument('-n', '--name', default='unknown', help='Motif name (default: unknown)')
 parser.add_argument('-e', '--empfreq', action='store_true', help='Use empirical nucleotide frequencies from the alignment')
+parser.add_argument('-b', '--bgfreq', type=float, nargs=4, default=[0.25, 0.25, 0.25, 0.25], help='Background nucleotide frequencies (default: 0.25 for each nucleotide)')
 args = parser.parse_args()
 
 # Create the output folder if it doesn't exist
@@ -37,19 +39,18 @@ for input_file in args.input:
         background_freq = []
         for i in range(alignment.get_alignment_length()):
             col = alignment[:, i]
-            counts = col.count()
-            freqs = [col.count(c) / counts for c in ['A', 'C', 'G', 'T']]
+            counts = Counter(col)
+            freqs = [counts[c] / num_seqs for c in ['A', 'C', 'G', 'T']]
             background_freq.append(freqs)
         background_freq = [sum(x) / len(background_freq) for x in zip(*background_freq)]
     else:
         # Use flat background nucleotide frequencies
-        background_freq = [0.25] * 4
+        background_freq = args.bgfreq
 
     if args.format == 'meme':
         # Compute the position frequency matrix (PFM)
         pfm = alignment.count_per_position()
         consensus = pfm._get_consensus()
-        background_freq = args.bgfreq
         freq_matrix = pfm._get_matrix()
         seq_length = pfm.get_alignment_length()
 
@@ -79,7 +80,7 @@ for input_file in args.input:
             outfile.write("\n")
             outfile.write("# {}\n".format(args.name))
             for i in range(4):
-                outfile.write("# {} [{:.2f} {:.2f} {:.2f} {:.2f}]\n".format(['A', 'C', 'G', 'T'][i], *args.bgfreq))
+                outfile.write("# {} [{:.2f} {:.2f} {:.2f} {:.2f}]\n".format(['A', 'C', 'G', 'T'][i], *background_freq))
             outfile.write("\n")
             outfile.write("{}\n".format("\t".join(["{}".format(i+1) for i in range(pfm.get_alignment_length())])))
             for i in range(4):
