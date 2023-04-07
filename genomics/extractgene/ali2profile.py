@@ -60,7 +60,12 @@ for input_file in args.input:
     if args.bgfreq is not None:
         background_freq = args.bgfreq
     else:
-        background_freq = [1.0 / len(alphabet)] * len(alphabet)
+        if args.empfreq:
+            counts = count_per_position(alignment, alphabet)
+            total_counts = [sum(row) for row in counts]
+            background_freq = [sum(total_counts) / (len(alphabet) * len(counts))]
+        else:
+            background_freq = [1.0 / len(alphabet)] * len(alphabet)
 
     # Convert U to T if it exists in the sequence
     if args.type == 'nt':
@@ -69,9 +74,10 @@ for input_file in args.input:
 
     # Compute the frequency matrix
     if args.empfreq:
-        freq_matrix = count_per_position(alignment, alphabet)
+        counts = count_per_position(alignment, alphabet)
         num_seqs = len(alignment)
         seq_length = alignment.get_alignment_length()
+        freq_matrix = [[counts[i][symbol] / num_seqs for symbol in alphabet] for i in range(seq_length)]
     else:
         counts = alignment[:, :]
         num_seqs = len(alignment)
@@ -95,26 +101,3 @@ for input_file in args.input:
             for i in range(seq_length):
                 outfile.write("{}\n".format(' '.join('{:.4f}'.format(f) for f in freq_matrix[i])))
             outfile.write("\n")
-
-    elif args.format == 'pfm':
-        # Write the PFM file header and frequency matrix
-        with open(output_file, 'w') as outfile:
-            outfile.write("# PFM file\n")
-            outfile.write("\n")
-            outfile.write("# {}\n".format(args.name))
-            outfile.write("\n")
-            for i, symbol in enumerate(alphabet):
-                outfile.write("{}\t{}\n".format(symbol, "\t".join(["{:.2f}".format(c) for c in [row[i] for row in freq_matrix]])))
-            outfile.write("\n")
-
-    elif args.format == 'hmm':
-        # Create a temporary file to hold the input alignment in Stockholm format
-        with NamedTemporaryFile(mode='w', delete=False) as tmp_file:
-            AlignIO.write(alignment, tmp_file, 'stockholm')
-            tmp_file.flush()
-
-            # Run hmmbuild to generate the HMM profile
-            hmm_file = os.path.splitext(output_file)[0] + ".hmm"
-            subprocess.run(['hmmbuild', '-n', args.name, hmm_file, tmp_file.name], check=True)
-
-    print("Wrote {}.".format(output_file))
