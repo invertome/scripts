@@ -5,21 +5,20 @@ from Bio import AlignIO
 from tempfile import NamedTemporaryFile
 from collections import Counter
 
+# Function to count the number of occurrences of each symbol at each position in the alignment
 def count_per_position(alignment, alphabet):
     length = alignment.get_alignment_length()
-    counts = [Counter({symbol: count for symbol, count in Counter(alignment[:, i]).items() if symbol in alphabet}) for i in range(length)]
-    return counts
-
+    counts = [Counter(alignment[:, i]) for i in range(length)]
+    matrix = [[counts[i][symbol] for symbol in alphabet] for i in range(length)]
+    return matrix
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description='Convert multiple sequence alignments to motif profile files.')
 parser.add_argument('-i', '--input', required=True, nargs='+', help='Path(s) to input FASTA file(s)')
 parser.add_argument('-o', '--output', required=True, help='Path to output folder')
-parser.add_argument('-f', '--format', choices=['meme', 'pfm', 'hmm'], default='meme', help='Output format (default: meme)')
+parser.add_argument('-f', '--format', choices=['meme', 'pfm', 'hmm', 'psiblast', 'all'], default='meme', help='Output format (default: meme)')
 parser.add_argument('-n', '--name', default='unknown', help='Motif name (default: unknown)')
 parser.add_argument('-t', '--type', choices=['nt', 'aa'], required=True, help='Sequence type (nt or aa)')
-parser.add_argument('-e', '--empfreq', action='store_true', help='Use empirical symbol frequencies from the alignment')
-parser.add_argument('-b', '--bgfreq', type=float, nargs='+', default=None, help='Background symbol frequencies (default: flat frequency)')
 args = parser.parse_args()
 
 # Define the nucleotide and amino acid alphabets
@@ -32,14 +31,12 @@ if not os.path.exists(args.output):
 
 # Process each input file
 for input_file in args.input:
-
     # Determine the output file path based on the input file name and output format
-    if args.format == 'meme':
-        output_file = os.path.join(args.output, os.path.splitext(os.path.basename(input_file))[0] + ".meme")
-    elif args.format == 'pfm':
-        output_file = os.path.join(args.output, os.path.splitext(os.path.basename(input_file))[0] + ".pfm")
-    elif args.format == 'hmm':
-        output_file = os.path.join(args.output, os.path.splitext(os.path.basename(input_file))[0] + ".hmm")
+    file_base = os.path.splitext(os.path.basename(input_file))[0]
+    if args.format == 'all':
+        formats = ['meme', 'pfm', 'hmm', 'psiblast']
+    else:
+        formats = [args.format]
 
     # Load the input alignment file
     alignment = AlignIO.read(input_file, 'fasta')
@@ -55,45 +52,54 @@ for input_file in args.input:
     elif args.type == 'aa':
         alphabet = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y']
 
+    # Create a temporary file to hold the input alignment in FASTA format
+    with NamedTemporaryFile(mode='w', delete=False, dir=args.output) as tmp_file:
+        AlignIO.write(alignment, tmp_file, 'fasta')
+        tmp_file.flush()
 
-    # Compute the frequency matrix
-    if args.empfreq:
-        counts = count_per_position(alignment, alphabet)
-        num_seqs = len(alignment)
-        seq_length = alignment.get_alignment_length()
-        freq_matrix = counts
-    else:
-        counts = [Counter(alignment[:, i]) for i in range(seq_length)]
-        num_seqs = len(alignment)
-        seq_length = alignment.get_alignment_length()
-        freq_matrix = [[(counts[i].get(symbol, 0) + 0.25) / (num_seqs + 1) for symbol in alphabet] for i in range(seq_length)]
+        # Run fasta-get-markov to compute background frequencies using the Docker container
+        with NamedTemporaryFile(mode='w', delete=False, dir=args.output) as bg_freq_file:
+            subprocess.run(['docker', 'run', '-v', f'{os.getcwd()}:/home/meme', 'memesuite/memesuite', 'fasta-get-markov', os.path.basename(tmp_file.name), os.path.basename(bg_freq_file.name)], check=True)
+            bg_freq_file.flush()
 
-    # Determine the background frequency
-    if args.empfreq:
-        total_counts = Counter()
-        for pos_counts in counts:
-            total_counts.update(pos_counts)
-        total_symbols = sum(total_counts.values())
-        background_freq = [total_counts[symbol] / total_symbols for symbol in alphabet]
-    elif args.bgfreq is not None:
-        background_freq = args.bgfreq
-    else:
-        background_freq = [1.0 / len(alphabet)] * len(alphabet)
+            for fmt in formats:
+                output_file = os.path.join(args.output, file_base + "." + fmt)
 
+                if fmt == 'meme':
+                    # Run MEME to create a .meme file using the Docker container
+                    subprocess.run(['docker', 'run', '-v', f'{os.getcwd()}:/home/meme', 'memesuite/memesuite', 'meme', os.path.basename(tmp_file.name), '-oc', os.path.basename(output_file), '-nostatus', '-bfile', os.path.basename(bg_freq_file.name), '-dna' if args.type == 'nt' else '-protein'], check=True)
 
-    # Write the output file
-    if args.format == 'meme':
-        # Write the MEME motif file header and frequency matrix
-        with open(output_file, 'w') as outfile:
-            outfile.write("MEME version 4\n")
-            outfile.write("\n")
-            outfile.write("ALPHABET= {}\n".format(''.join(alphabet)))
-            outfile.write("STRANDS= + -\n")
-            outfile.write("Background letter frequencies (from unknown source):\n")
-            outfile.write("{}\n".format(' '.join('{:.4f}'.format(f) for f in background_freq)))
-            outfile.write("\n")
-            outfile.write("MOTIF {}\n".format(args.name))
-            outfile.write("letter-probability matrix: alength= {} w= {} nsites= {}\n".format(len(alphabet), seq_length, num_seqs))
-            for i in range(seq_length):
-                outfile.write("{}\n".format(' '.join('{:.4f}'.format(f) for f in freq_matrix[i])))
-            outfile.write("\n")
+                elif fmt == 'pfm':
+                    # Compute the frequency matrix
+                    freq_matrix = count_per_position(alignment, alphabet)
+                    num_seqs = len(alignment)
+                    seq_length = alignment.get_alignment_length()
+
+                    # Write the PFM file header and frequency matrix
+                    with open(output_file, 'w') as outfile:
+                        outfile.write("# PFM file\n")
+                        outfile.write("\n")
+                        outfile.write("# {}\n".format(args.name))
+                        outfile.write("\n")
+                        for i, symbol in enumerate(alphabet):
+                            outfile.write("{}\t{}\n".format(symbol, "\t".join(["{:.2f}".format(c) for c in [row[i] for row in freq_matrix]])))
+                        outfile.write("\n")
+
+                elif fmt == 'hmm':
+                    # Create a temporary file to hold the input alignment in Stockholm format
+                    with NamedTemporaryFile(mode='w', delete=False, dir=args.output) as tmp_stockholm_file:
+                        AlignIO.write(alignment, tmp_stockholm_file, 'stockholm')
+                        tmp_stockholm_file.flush()
+
+                        # Run hmmbuild to generate the HMM profile
+                        subprocess.run(['hmmbuild', '-n', args.name, output_file, tmp_stockholm_file.name], check=True)
+
+                elif fmt == 'psiblast':
+                    # Run PSI-BLAST to create a checkpoint file
+                    subprocess.run(['psiblast', '-subject', tmp_file.name, '-in_msa', tmp_file.name, '-out_ascii_pssm', output_file], check=True)
+
+                print("Wrote {}.".format(output_file))
+
+        # Remove temporary files
+        os.remove(tmp_file.name)
+        os.remove(bg_freq_file.name)
