@@ -102,12 +102,9 @@ for input_file in args.input:
             outfile.write("# PFM file\n")
             outfile.write("\n")
             outfile.write("# {}\n".format(args.name))
-            for i, symbol in enumerate(alphabet):
-                outfile.write("# {} {}\n".format(symbol, ' '.join('{:.2f}'.format(f) for f in background_freq)))
             outfile.write("\n")
-            outfile.write("{}\n".format("\t".join(["{}".format(i+1) for i in range(len(freq_matrix))])))
             for i, symbol in enumerate(alphabet):
-                outfile.write("{}\t{}\n".format(symbol, "\t".join(["{}".format(c) for c in freq_matrix[:,i]])))
+                outfile.write("{}\t{}\n".format(symbol, "\t".join(["{:.2f}".format(c) for c in [row[i] for row in freq_matrix]])))
             outfile.write("\n")
 
     elif args.format == 'hmm':
