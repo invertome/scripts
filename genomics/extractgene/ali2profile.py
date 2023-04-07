@@ -5,6 +5,13 @@ from Bio import AlignIO
 from tempfile import NamedTemporaryFile
 from collections import Counter
 
+# Function to count the number of occurrences of each nucleotide at each position in the alignment
+def count_per_position(alignment):
+    length = alignment.get_alignment_length()
+    counts = [Counter(alignment[:, i]) for i in range(length)]
+    matrix = [[counts[i][nuc] for nuc in ['A', 'C', 'G', 'T']] for i in range(length)]
+    return matrix
+
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description='Convert multiple sequence alignments to motif profile files.')
 parser.add_argument('-i', '--input', required=True, nargs='+', help='Path(s) to input FASTA file(s)')
@@ -49,10 +56,8 @@ for input_file in args.input:
 
     if args.format == 'meme':
         # Compute the position frequency matrix (PFM)
-        pfm = alignment.count_per_position()
-        consensus = pfm._get_consensus()
-        freq_matrix = pfm._get_matrix()
-        seq_length = pfm.get_alignment_length()
+        freq_matrix = count_per_position(alignment)
+        seq_length = len(freq_matrix)
 
         # Write the MEME motif file header and frequency matrix
         with open(output_file, 'w') as outfile:
@@ -66,13 +71,12 @@ for input_file in args.input:
             outfile.write("MOTIF {}\n".format(args.name))
             outfile.write("letter-probability matrix: alength= 4 w= {} nsites= {}\n".format(seq_length, num_seqs))
             for i in range(seq_length):
-                outfile.write("{:.4f} {:.4f} {:.4f} {:.4f}\n".format(*freq_matrix[:,i]))
+                outfile.write("{:.4f} {:.4f} {:.4f} {:.4f}\n".format(*freq_matrix[i]))
             outfile.write("\n")
 
     elif args.format == 'pfm':
         # Compute the position frequency matrix (PFM)
-        pfm = alignment.count_per_position()
-        freq_matrix = pfm._get_matrix()
+        freq_matrix = count_per_position(alignment)
 
         # Write the PFM file header and frequency matrix
         with open(output_file, 'w') as outfile:
@@ -82,9 +86,9 @@ for input_file in args.input:
             for i in range(4):
                 outfile.write("# {} [{:.2f} {:.2f} {:.2f} {:.2f}]\n".format(['A', 'C', 'G', 'T'][i], *background_freq))
             outfile.write("\n")
-            outfile.write("{}\n".format("\t".join(["{}".format(i+1) for i in range(pfm.get_alignment_length())])))
+            outfile.write("{}\n".format("\t".join(["{}".format(i+1) for i in range(len(freq_matrix))])))
             for i in range(4):
-                outfile.write("{}\t{}\n".format(['A', 'C', 'G', 'T'][i], "\t".join(["{}".format(c) for c in freq_matrix[i,:]])))
+                outfile.write("{}\t{}\n".format(['A', 'C', 'G', 'T'][i], "\t".join(["{}".format(c) for c in freq_matrix[:,i]])))
             outfile.write("\n")
 
     elif args.format == 'hmm':
@@ -98,3 +102,4 @@ for input_file in args.input:
             subprocess.run(['hmmbuild', '-n', args.name, hmm_file, tmp_file.name], check=True)
 
     print("Wrote {}.".format(output_file))
+
