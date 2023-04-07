@@ -5,12 +5,11 @@ from Bio import AlignIO
 from tempfile import NamedTemporaryFile
 from collections import Counter
 
-# Function to count the number of occurrences of each symbol at each position in the alignment
 def count_per_position(alignment, alphabet):
     length = alignment.get_alignment_length()
-    counts = [Counter(alignment[:, i]) for i in range(length)]
-    matrix = [[counts[i][symbol] for symbol in alphabet] for i in range(length)]
-    return matrix
+    counts = [Counter({symbol: count for symbol, count in Counter(alignment[:, i]).items() if symbol in alphabet}) for i in range(length)]
+    return counts
+
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description='Convert multiple sequence alignments to motif profile files.')
@@ -57,15 +56,17 @@ for input_file in args.input:
         alphabet = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y']
 
     # Determine the background frequency
-    if args.bgfreq is not None:
+    if args.empfreq:
+        total_counts = Counter()
+        for pos_counts in counts:
+            total_counts.update(pos_counts)
+        total_symbols = sum(total_counts.values())
+        background_freq = [total_counts[symbol] / total_symbols for symbol in alphabet]
+    elif args.bgfreq is not None:
         background_freq = args.bgfreq
     else:
-        if args.empfreq:
-            counts = count_per_position(alignment, alphabet)
-            total_counts = [sum(row) for row in counts]
-            background_freq = [sum(total_counts) / (len(alphabet) * len(counts))]
-        else:
-            background_freq = [1.0 / len(alphabet)] * len(alphabet)
+        background_freq = [1.0 / len(alphabet)] * len(alphabet)
+
 
     # Convert U to T if it exists in the sequence
     if args.type == 'nt':
