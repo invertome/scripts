@@ -2,6 +2,7 @@ import argparse
 import os
 import subprocess
 from Bio import AlignIO
+from io import StringIO
 from tempfile import NamedTemporaryFile
 from collections import Counter
 
@@ -53,53 +54,65 @@ for input_file in args.input:
         alphabet = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y']
 
     # Create a temporary file to hold the input alignment in FASTA format
-    with NamedTemporaryFile(mode='w', delete=False, dir=args.output) as tmp_file:
-        AlignIO.write(alignment, tmp_file, 'fasta')
-        tmp_file.flush()
+    fasta_alignment = StringIO()
+    AlignIO.write(alignment, fasta_alignment, 'fasta')
+    fasta_alignment.seek(0)
 
-        # Run fasta-get-markov to compute background frequencies using the Docker container
-        with NamedTemporaryFile(mode='w', delete=False, dir=args.output) as bg_freq_file:
-            subprocess.run(['docker', 'run', '-v', f'{os.path.abspath(args.output)}:/home/meme/output', 'memesuite/memesuite', 'fasta-get-markov', os.path.join('/home/meme/output', os.path.basename(tmp_file.name)), os.path.join('/home/meme/output', os.path.basename(bg_freq_file.name))], check=True)
-            bg_freq_file.flush()
+    # Run fasta-get-markov to compute background frequencies using the Docker container
+    fasta_get_markov_process = subprocess.Popen(['docker', 'run', '--rm', '-i', 'memesuite/memesuite', 'fasta-get-markov', '-'], stdin=fasta_alignment, stdout=subprocess.PIPE, text=True)
+    bg_freq_data = fasta_get_markov_process.communicate()[0]
 
-            for fmt in formats:
-                output_file = os.path.join(args.output, file_base + "." + fmt)
+    for fmt in formats:
+        output_file = os.path.join(args.output, file_base + "." + fmt)
 
-                if fmt == 'meme':
-                    # Run MEME to create a .meme file using the Docker container
-                    subprocess.run(['docker', 'run', '-v', f'{os.path.abspath(args.output)}:/home/meme/output', 'memesuite/memesuite', 'meme', os.path.join('/home/meme/output', os.path.basename(tmp_file.name)), '-oc', os.path.join('/home/meme/output', os.path.basename(output_file)), '-nostatus', '-bfile', os.path.join('/home/meme/output', os.path.basename(bg_freq_file.name)), '-dna' if args.type == 'nt' else '-protein'], check=True)
+        if fmt == 'meme':
+            # Run MEME to create a .meme file using the Docker container
+            meme_process = subprocess.Popen(['docker', 'run', '--rm', '-i', 'memesuite/memesuite', 'meme', '-', '-oc', '/home/meme/output', '-nostatus', '-bfile', '-', '-dna' if args.type == 'nt' else '-protein'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-                elif fmt == 'pfm':
-                    # Compute the frequency matrix
-                    freq_matrix = count_per_position(alignment, alphabet)
-                    num_seqs = len(alignment)
-                    seq_length = alignment.get_alignment_length()
+            # Write the input alignment in FASTA format and background frequencies to the stdin of meme_process
+            fasta_alignment.seek(0)
+            meme_process.stdin.write(fasta_alignment.read())
+            meme_process.stdin.write(bg_freq_data)
+            meme_process.stdin.close()
 
-                    # Write the PFM file header and frequency matrix
-                    with open(output_file, 'w') as outfile:
-                        outfile.write("# PFM file\n")
-                        outfile.write("\n")
-                        outfile.write("# {}\n".format(args.name))
-                        outfile.write("\n")
-                        for i, symbol in enumerate(alphabet):
-                            outfile.write("{}\t{}\n".format(symbol, "\t".join(["{:.2f}".format(c) for c in [row[i] for row in freq_matrix]])))
-                        outfile.write("\n")
+            # Read the MEME output from the stdout of meme_process
+            meme_data = meme_process.stdout.read()
 
-                elif fmt == 'hmm':
-                    # Create a temporary file to hold the input alignment in Stockholm format
-                    with NamedTemporaryFile(mode='w', delete=False, dir=args.output) as tmp_stockholm_file:
-                        AlignIO.write(alignment, tmp_stockholm_file, 'stockholm')
-                        tmp_stockholm_file.flush()
+            # Write the MEME output to the output file
+            with open(output_file, 'w') as f:
+                f.write(meme_data)
 
-                        # Run hmmbuild to generate the HMM profile
-                        subprocess.run(['hmmbuild', '-n', args.name, output_file, tmp_stockholm_file.name], check=True)
+        elif fmt == 'pfm':
+            # Compute the frequency matrix
+            freq_matrix = count_per_position(alignment, alphabet)
+            num_seqs = len(alignment)
+            seq_length = alignment.get_alignment_length()
 
-                elif fmt == 'psiblast':
-                    # Run PSI-BLAST to create a checkpoint file
-                    subprocess.run(['psiblast', '-subject', tmp_file.name, '-in_msa', tmp_file.name, '-out_ascii_pssm', output_file], check=True)
+            # Write the PFM file header and frequency matrix
+            with open(output_file, 'w') as outfile:
+                outfile.write("# PFM file\n")
+                outfile.write("\n")
+                outfile.write("# {}\n".format(args.name))
+                outfile.write("\n")
+                for i, symbol in enumerate(alphabet):
+                    outfile.write("{}\t{}\n".format(symbol, "\t".join(["{:.2f}".format(c) for c in [row[i] for row in freq_matrix]])))
+                outfile.write("\n")
 
-                print("Wrote {}.".format(output_file))
+        elif fmt == 'hmm':
+            # Create a temporary file to hold the input alignment in Stockholm format
+            with NamedTemporaryFile(mode='w', delete=False, dir=args.output) as tmp_stockholm_file:
+                AlignIO.write(alignment, tmp_stockholm_file, 'stockholm')
+                tmp_stockholm_file.flush()
 
-        # Remove temporary files
-        os.remove(tmp_file.name)
-        os.remove(bg_freq_file.name)
+                # Run hmmbuild to generate the HMM profile
+                subprocess.run(['hmmbuild', '-n', args.name, output_file, tmp_stockholm_file.name], check=True)
+
+        elif fmt == 'psiblast':
+            # Run PSI-BLAST to create a checkpoint file
+            subprocess.run(['psiblast', '-subject', tmp_file.name, '-in_msa', tmp_file.name, '-out_ascii_pssm', output_file], check=True)
+
+        print("Wrote {}.".format(output_file))
+
+    # Remove temporary files
+    os.remove(tmp_file.name)
+    os.remove(bg_freq_file.name)
