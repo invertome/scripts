@@ -77,12 +77,13 @@ for input_file in args.input:
         counts = count_per_position(alignment, alphabet)
         num_seqs = len(alignment)
         seq_length = alignment.get_alignment_length()
-        freq_matrix = [[counts[i][symbol] / num_seqs for symbol in alphabet] for i in range(seq_length)]
+        freq_matrix = [[counts[i].get(symbol, 0) / num_seqs for symbol in alphabet] for i in range(seq_length)]
     else:
         counts = [Counter(alignment[:, i]) for i in range(seq_length)]
         num_seqs = len(alignment)
         seq_length = alignment.get_alignment_length()
-        freq_matrix = [[(counts[i][symbol] + 0.25) / (num_seqs + 1) for symbol in alphabet] for i in range(seq_length)]
+        freq_matrix = [[(counts[i].get(symbol, 0) + 0.25) / (num_seqs + 1) for symbol in alphabet] for i in range(seq_length)]
+
 
 
     # Write the output file
