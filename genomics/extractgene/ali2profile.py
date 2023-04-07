@@ -5,12 +5,30 @@ from Bio import AlignIO
 from tempfile import NamedTemporaryFile
 from collections import Counter
 
-# Function to count the number of occurrences of each nucleotide at each position in the alignment
-def count_per_position(alignment):
+# Function to count the number of occurrences of each symbol at each position in the alignment
+def count_per_position(alignment, alphabet):
     length = alignment.get_alignment_length()
     counts = [Counter(alignment[:, i]) for i in range(length)]
-    matrix = [[counts[i][nuc] for nuc in ['A', 'C', 'G', 'T']] for i in range(length)]
+    matrix = [[counts[i][symbol] for symbol in alphabet] for i in range(length)]
     return matrix
+
+# Function to determine the alphabet of the sequences (nucleotides or amino acids)
+def detect_alphabet(alignment):
+    # Define the nucleotide and amino acid alphabets
+    nucleotides = set("ACGTUacgtu")
+    amino_acids = set("ACDEFGHIKLMNPQRSTVWYacdefghiklmnpqrstvwy")
+
+    # Check if all the sequences only contain nucleotides
+    if all(set(str(seq.seq)) <= nucleotides for seq in alignment):
+        alphabet = ['A', 'C', 'G', 'T']
+    # Check if all the sequences only contain amino acids
+    elif all(set(str(seq.seq)) <= amino_acids for seq in alignment):
+        alphabet = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y']
+    # Otherwise, raise an error
+    else:
+        raise ValueError("Invalid alphabet: sequences contain both nucleotides and amino acids")
+
+    return alphabet
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description='Convert multiple sequence alignments to motif profile files.')
@@ -18,8 +36,8 @@ parser.add_argument('-i', '--input', required=True, nargs='+', help='Path(s) to 
 parser.add_argument('-o', '--output', required=True, help='Path to output folder')
 parser.add_argument('-f', '--format', choices=['meme', 'pfm', 'hmm'], default='meme', help='Output format (default: meme)')
 parser.add_argument('-n', '--name', default='unknown', help='Motif name (default: unknown)')
-parser.add_argument('-e', '--empfreq', action='store_true', help='Use empirical nucleotide frequencies from the alignment')
-parser.add_argument('-b', '--bgfreq', type=float, nargs=4, default=[0.25, 0.25, 0.25, 0.25], help='Background nucleotide frequencies (default: 0.25 for each nucleotide)')
+parser.add_argument('-e', '--empfreq', action='store_true', help='Use empirical symbol frequencies from the alignment')
+parser.add_argument('-b', '--bgfreq', type=float, nargs='+', default=None, help='Background symbol frequencies (default: flat frequency)')
 args = parser.parse_args()
 
 # Create the output folder if it doesn't exist
@@ -39,56 +57,57 @@ for input_file in args.input:
 
     # Load the input alignment file
     alignment = AlignIO.read(input_file, 'fasta')
-    num_seqs = len(alignment)
 
-    if args.empfreq:
-        # Compute empirical nucleotide frequencies
-        background_freq = []
-        for i in range(alignment.get_alignment_length()):
-            col = alignment[:, i]
-            counts = Counter(col)
-            freqs = [counts[c] / num_seqs for c in ['A', 'C', 'G', 'T']]
-            background_freq.append(freqs)
-        background_freq = [sum(x) / len(background_freq) for x in zip(*background_freq)]
-    else:
-        # Use flat background nucleotide frequencies
+    # Determine the alphabet
+    alphabet = detect_alphabet(alignment)
+
+    # Determine the background frequency
+    if args.bgfreq is not None:
         background_freq = args.bgfreq
+    else:
+        background_freq = [1.0 / len(alphabet)] * len(alphabet)
 
+    # Compute the frequency matrix
+    if args.empfreq:
+        freq_matrix = count_per_position(alignment, alphabet)
+        num_seqs = len(alignment)
+        seq_length = alignment.get_alignment_length()
+    else:
+        counts = alignment[:, :]
+        num_seqs = len(alignment)
+        seq_length = alignment.get_alignment_length()
+        freq_matrix = [[(counts[:, i] == symbol).sum() for symbol in alphabet] for i in range(seq_length)]
+        freq_matrix = [[(symbol + 0.25) / (num_seqs + 1) for symbol in row] for row in freq_matrix]
+
+    # Write the output file
     if args.format == 'meme':
-        # Compute the position frequency matrix (PFM)
-        freq_matrix = count_per_position(alignment)
-        seq_length = len(freq_matrix)
-
         # Write the MEME motif file header and frequency matrix
         with open(output_file, 'w') as outfile:
             outfile.write("MEME version 4\n")
             outfile.write("\n")
-            outfile.write("ALPHABET= ACGT\n")
+            outfile.write("ALPHABET= {}\n".format(''.join(alphabet)))
             outfile.write("STRANDS= + -\n")
             outfile.write("Background letter frequencies (from unknown source):\n")
-            outfile.write("A {:.4f} C {:.4f} G {:.4f} T {:.4f}\n".format(*background_freq))
+            outfile.write("{}\n".format(' '.join('{:.4f}'.format(f) for f in background_freq)))
             outfile.write("\n")
             outfile.write("MOTIF {}\n".format(args.name))
-            outfile.write("letter-probability matrix: alength= 4 w= {} nsites= {}\n".format(seq_length, num_seqs))
+            outfile.write("letter-probability matrix: alength= {} w= {} nsites= {}\n".format(len(alphabet), seq_length, num_seqs))
             for i in range(seq_length):
-                outfile.write("{:.4f} {:.4f} {:.4f} {:.4f}\n".format(*freq_matrix[i]))
+                outfile.write("{}\n".format(' '.join('{:.4f}'.format(f) for f in freq_matrix[i])))
             outfile.write("\n")
 
     elif args.format == 'pfm':
-        # Compute the position frequency matrix (PFM)
-        freq_matrix = count_per_position(alignment)
-
         # Write the PFM file header and frequency matrix
         with open(output_file, 'w') as outfile:
             outfile.write("# PFM file\n")
             outfile.write("\n")
             outfile.write("# {}\n".format(args.name))
-            for i in range(4):
-                outfile.write("# {} [{:.2f} {:.2f} {:.2f} {:.2f}]\n".format(['A', 'C', 'G', 'T'][i], *background_freq))
+            for i, symbol in enumerate(alphabet):
+                outfile.write("# {} {}\n".format(symbol, ' '.join('{:.2f}'.format(f) for f in background_freq)))
             outfile.write("\n")
             outfile.write("{}\n".format("\t".join(["{}".format(i+1) for i in range(len(freq_matrix))])))
-            for i in range(4):
-                outfile.write("{}\t{}\n".format(['A', 'C', 'G', 'T'][i], "\t".join(["{}".format(c) for c in freq_matrix[:,i]])))
+            for i, symbol in enumerate(alphabet):
+                outfile.write("{}\t{}\n".format(symbol, "\t".join(["{}".format(c) for c in freq_matrix[:,i]])))
             outfile.write("\n")
 
     elif args.format == 'hmm':
@@ -102,4 +121,3 @@ for input_file in args.input:
             subprocess.run(['hmmbuild', '-n', args.name, hmm_file, tmp_file.name], check=True)
 
     print("Wrote {}.".format(output_file))
-
