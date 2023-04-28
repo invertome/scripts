@@ -103,7 +103,7 @@ def main(args):
         species_dict = None
 
     if args.plot:
-        e_values = np.logspace(args.start, args.end, num=args.searches)
+        e_values = np.logspace(-args.end, -args.start, num=args.searches)[::-1]
         num_hits = []
 
         # Perform search with the most permissive E-value
