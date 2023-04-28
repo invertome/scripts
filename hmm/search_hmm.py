@@ -49,7 +49,7 @@ def read_results_table(output_table, species_dict=None):
             line = f.readline()
 
     results_df = pd.read_csv(output_table, sep="\s+", skiprows=skip_rows, header=None)
-    results_df.columns = ["target_name", "target_accession", "tlen", "query_name", "query_accession", "qlen", "E-value", "score", "bias", "domain_number", "domain_total", "c-Evalue", "i-Evalue", "domain_score", "domain_bias", "hmm_start", "hmm_end", "ali_start", "ali_end", "env_start", "env_end", "accuracy", "description"]
+    results_df.columns = ["target_name", "target_accession", "query_name", "query_accession", "E-value", "score", "bias", "domain_E-value", "domain_score", "domain_bias", "exp", "reg", "clu", "ov", "env", "dom", "rep", "inc", "description"]
 
     if species_dict:
         results_df["species_id"] = results_df["target_name"].apply(lambda x: x.split(":")[-1])
@@ -57,6 +57,7 @@ def read_results_table(output_table, species_dict=None):
         results_df["description_with_species"] = results_df["species_name"] + "_" + results_df["description"]
 
     return results_df
+
 
 
 
@@ -106,9 +107,11 @@ def main(args):
         e_values = np.logspace(-args.end, -args.start, num=args.searches)[::-1]
         num_hits = []
 
-        # Perform search with the most permissive E-value
         output_table_most_permissive = f"{args.output}_most_permissive.txt"
-        search_hmm_profile(args.hmm_file, args.input, output_table_most_permissive, e_value=e_values[0], threads=args.threads)
+
+        if not args.use_existing_results:
+            # Perform search with the most permissive E-value
+            search_hmm_profile(args.hmm_file, args.input, output_table_most_permissive, e_value=e_values[0], threads=args.threads)
 
         for e_value in e_values:
             output_table_filtered = f"{args.output}_evalue_{e_value:.1e}.txt"
@@ -122,7 +125,8 @@ def main(args):
         plot_taxonomic_distribution(hits_df)
 
     else:
-        search_hmm_profile(args.hmm_file, args.input, args.output, threads=args.threads)
+        if not args.use_existing_results:
+            search_hmm_profile(args.hmm_file, args.input, args.output, threads=args.threads)
 
         if species_dict:
             hits_df = read_results_table(args.output, species_dict)
@@ -142,5 +146,6 @@ if __name__ == "__main__":
     parser.add_argument("-n", "--searches", type=int, default=10, help="Number of E-values to search")
     parser.add_argument("-t", "--threads", type=int, default=1, help="Number of threads/CPUs to use")
     parser.add_argument("-x", "--species_tab_file", type=str, help="Species tab file for taxonomic information")
+    parser.add_argument("-k", "--use_existing_results", action="store_true", help="Use existing results file")
     args = parser.parse_args()
     main(args)
