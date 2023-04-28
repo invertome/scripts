@@ -40,15 +40,25 @@ def parse_species_tab(species_tab_file):
 
 # Function to read the results table and add species information
 def read_results_table(output_table, species_dict=None):
-    results_df = pd.read_csv(output_table, sep="\s+", comment="#", header=None)
+    with open(output_table, "r") as f:
+        # Count the number of initial comment lines to skip them when reading the file
+        skip_rows = 0
+        line = f.readline()
+        while line.startswith("#"):
+            skip_rows += 1
+            line = f.readline()
+
+    results_df = pd.read_csv(output_table, sep="\s+", skiprows=skip_rows, header=None)
     results_df.columns = ["target_name", "target_accession", "tlen", "query_name", "query_accession", "qlen", "E-value", "score", "bias", "domain_number", "domain_total", "c-Evalue", "i-Evalue", "domain_score", "domain_bias", "hmm_start", "hmm_end", "ali_start", "ali_end", "env_start", "env_end", "accuracy", "description"]
-    
+
     if species_dict:
         results_df["species_id"] = results_df["target_name"].apply(lambda x: x.split(":")[-1])
         results_df["species_name"] = results_df["species_id"].apply(lambda x: species_dict.get(x, "Unknown"))
         results_df["description_with_species"] = results_df["species_name"] + "_" + results_df["description"]
-    
+
     return results_df
+
+
 
 # Function to plot the length distribution of hits
 def plot_length_distribution(results_df):
@@ -96,9 +106,9 @@ def main(args):
         e_values = np.logspace(args.start, args.end, num=args.searches)
         num_hits = []
 
-        # Perform search with most permissive E-value
+        # Perform search with the most permissive E-value
         output_table_most_permissive = f"{args.output}_most_permissive.txt"
-        search_hmm_profile(args.hmm_file, args.input, output_table_most_permissive, e_value=e_values[-1], threads=args.threads)
+        search_hmm_profile(args.hmm_file, args.input, output_table_most_permissive, e_value=e_values[0], threads=args.threads)
 
         for e_value in e_values:
             output_table_filtered = f"{args.output}_evalue_{e_value:.1e}.txt"
@@ -119,6 +129,7 @@ def main(args):
             plot_length_distribution(hits_df)
             plot_evalue_distribution(hits_df)
             plot_taxonomic_distribution(hits_df)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Search for HMM motifs in a FASTA file.")
