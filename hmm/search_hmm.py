@@ -47,28 +47,30 @@ def read_results_table(output_table, species_dict=None):
         while line.startswith("#"):
             skip_rows += 1
             line = f.readline()
+            
+    print(f"Output table: {output_table}")
+    print(f"Number of lines to skip: {skip_rows}")
 
-    results_df = pd.read_csv(output_table, sep="\s+", skiprows=skip_rows, header=None)
-    results_df.columns = ["target_name", "target_accession", "query_name", "query_accession", "E-value", "score", "bias", "domain_E-value", "domain_score", "domain_bias", "exp", "reg", "clu", "ov", "env", "dom", "rep", "inc", "description"]
+    try:
+        results_df = pd.read_csv(output_table, sep="\s+", skiprows=skip_rows, header=None)
+        column_names = ["target_name", "target_accession", "query_name", "query_accession", "E-value", "score", "bias", "domain_E-value", "domain_score", "domain_bias", "exp", "reg", "clu", "ov", "env", "dom", "rep", "inc", "description"]
+        results_df.columns = column_names
+    except pd.errors.EmptyDataError:
+        column_names = ["target_name", "target_accession", "query_name", "query_accession", "E-value", "score", "bias", "domain_E-value", "domain_score", "domain_bias", "exp", "reg", "clu", "ov", "env", "dom", "rep", "inc", "description"]
+        results_df = pd.DataFrame(columns=column_names)
 
-    if species_dict:
+    print("Loaded dataframe:")
+    print(results_df.head())
+    print(results_df.columns)
+
+
+    if species_dict and not results_df.empty:
         results_df["species_id"] = results_df["target_name"].apply(lambda x: x.split(":")[-1])
         results_df["species_name"] = results_df["species_id"].apply(lambda x: species_dict.get(x, "Unknown"))
         results_df["description_with_species"] = results_df["species_name"] + "_" + results_df["description"]
 
     return results_df
 
-
-
-
-# Function to plot the length distribution of hits
-def plot_length_distribution(results_df):
-    plt.figure()
-    plt.hist(results_df["ali_end"] - results_df["ali_start"] + 1, bins=30)
-    plt.xlabel("Length of hit")
-    plt.ylabel("Frequency")
-    plt.title("Length distribution of hits")
-    plt.savefig("length_distribution.png")
 
 # Function to plot the E-value distribution of hits
 def plot_evalue_distribution(results_df):
@@ -120,7 +122,6 @@ def main(args):
             num_hits.append(hits_df.shape[0])
 
         plot_threshold_vs_hits(e_values, num_hits)
-        plot_length_distribution(hits_df)
         plot_evalue_distribution(hits_df)
         plot_taxonomic_distribution(hits_df)
 
@@ -130,7 +131,6 @@ def main(args):
 
         if species_dict:
             hits_df = read_results_table(args.output, species_dict)
-            plot_length_distribution(hits_df)
             plot_evalue_distribution(hits_df)
             plot_taxonomic_distribution(hits_df)
 
