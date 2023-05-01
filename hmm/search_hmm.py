@@ -63,13 +63,13 @@ def read_results_table(output_table, species_dict=None):
     print(results_df.head())
     print(results_df.columns)
 
-
     if species_dict and not results_df.empty:
-        results_df["species_id"] = results_df["target_name"].apply(lambda x: x.split(":")[-1])
+        results_df["species_id"] = results_df["target_name"].apply(lambda x: x.split(":")[-1].split("_")[0])
         results_df["species_name"] = results_df["species_id"].apply(lambda x: species_dict.get(x, "Unknown"))
         results_df["description_with_species"] = results_df["species_name"] + "_" + results_df["description"]
 
     return results_df
+
 
 
 # Function to plot the E-value distribution of hits
