@@ -61,7 +61,8 @@ dependencies = {
     "pandas": "pandas",
     "matplotlib": "matplotlib",
     "Bio": "biopython",
-    "logomaker": "logomaker"
+    "logomaker": "logomaker",
+    "gecos": "gecos"
 }
 
 for module_name, package_name in dependencies.items():
