@@ -59,10 +59,17 @@ def plot_msa(input_file, output_folder, plot_range, highlight_positions, color_m
     ax.invert_yaxis()  # To preserve the order of sequences as in the fasta file
     fig.tight_layout()
 
-    # Save the plot as PDF and PNG
+    # Output to file
+    output_folder = os.path.join(output_folder, os.path.splitext(os.path.basename(input_file))[0])
+    os.makedirs(output_folder, exist_ok=True)
     plt.savefig(os.path.join(output_folder, os.path.basename(input_file) + ".pdf"), bbox_inches='tight')
     plt.savefig(os.path.join(output_folder, os.path.basename(input_file) + ".png"), dpi=300, bbox_inches='tight')
     plt.close()
+
+    # Save color map used
+    with open(os.path.join(output_folder, "color_scheme.txt"), "w") as file:
+        for key, value in color_map_dict.items():
+            file.write(f"{key} : {value}\n")
 
 def main():
     # Create an argument parser
