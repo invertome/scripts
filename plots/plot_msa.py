@@ -30,7 +30,7 @@ def plot_msa(input_file, output_folder, plot_range, highlight_positions, color_m
     alignment = alignment[:, plot_range[0]-1:plot_range[1]]
 
     # Convert the alignment to a matrix for easier handling
-    matrix = np.array([list(rec) for rec in alignment], np.character)
+    matrix = np.array([list(rec) for rec in alignment], 'S1') # changed np.character to 'S1'
     
     # Create a figure and axis for the plot
     fig, ax = plt.subplots(figsize=(10, len(alignment)*0.3))
@@ -66,6 +66,12 @@ def plot_msa(input_file, output_folder, plot_range, highlight_positions, color_m
     plt.close()  # Close the plot
 
 
+
+def parse_range(range_str):
+    # Split the string by the dash and map each part to an integer
+    start, end = map(int, range_str.split('-'))
+    return start, end
+
 def main():
     # Define the command-line arguments
     parser = argparse.ArgumentParser()
@@ -79,13 +85,14 @@ def main():
 
     # Parse the positions for highlighting and the range for plotting
     highlight_positions = parse_positions(args.positions) if args.positions else []
-    plot_range = parse_positions(args.range)
+    plot_range = parse_range(args.range)  # Use the parse_range function here
 
     # Check if the range is valid
-    if len(plot_range) != 2 or plot_range[0] > plot_range[1]:
+    if plot_range[0] > plot_range[1]:
         print("Invalid range specified. Please make sure your range consists of two numbers, with the first being smaller or equal to the second.")
         return
 
+   
     # Iterate through the input files
     for input_file in args.input_files:
         # Get the base name of the file (without extension)
