@@ -11,14 +11,14 @@ def parse_positions(positions_str):
 
     # Split the string by commas and iterate through the elements
     for pos_str in positions_str.split(','):
-        if pos_str:  # Only process non-empty strings
-            if '-' in pos_str:  # If there's a dash, it represents a range
-                start, end = map(int, pos_str.split('-'))  # Get the start and end of the range
-                positions.extend(range(start, end + 1))  # Add all positions in the range to the list
-            else:  # If there's no dash, it's a single position
-                positions.append(int(pos_str))  # Add the position to the list
+        if '-' in pos_str:  # If there's a dash, it represents a range
+            start, end = map(int, pos_str.split('-'))  # Get the start and end of the range
+            positions.extend(range(start, end + 1))  # Add all positions in the range to the list
+        elif pos_str:  # If there's no dash and the string is not empty, it's a single position
+            positions.append(int(pos_str))  # Add the position to the list
 
     return positions  # Return the list of positions
+
 
 
 
