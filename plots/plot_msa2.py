@@ -1,11 +1,11 @@
 import argparse
 import os
+import json
 import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
 from Bio import AlignIO
-from matplotlib.colors import ListedColormap
-import json
+from matplotlib.patches import Rectangle
+from matplotlib import rcParams
 
 def parse_positions(positions_str):
     positions = []
@@ -17,24 +17,10 @@ def parse_positions(positions_str):
             positions.append(int(pos_str))  # Add the position to the list
     return positions  # Return the list of positions
 
-def parse_range(range_str):
-    try:
-        start, end = map(int, range_str.split('-'))
-    except ValueError:
-        print("Invalid range string. Range must be two integers separated by a dash.")
-        return None, None
-
-    if start > end:
-        print("Invalid range specified. Please make sure your range consists of two numbers, with the first being smaller or equal to the second.")
-        return None, None
-
-    return start, end
-
-def create_color_map_dict(color_scheme_path):
-    # Load the color scheme from the JSON file
-    with open(color_scheme_path, 'r') as f:
-        color_scheme = json.load(f)
-    color_map_dict = color_scheme["colors"]
+def load_color_map_from_json(json_file):
+    with open(json_file, 'r') as file:
+        data = json.load(file)
+    color_map_dict = data['colors']
     return color_map_dict
 
 def plot_msa(input_file, output_folder, plot_range, highlight_positions, color_map_dict):
@@ -47,36 +33,33 @@ def plot_msa(input_file, output_folder, plot_range, highlight_positions, color_m
     matrix = np.array([list(rec) for rec in alignment], dtype='U1')
 
     # Create a figure and axis for the plot
-    fig, ax = plt.subplots(figsize=(10, len(alignment)*0.3))
+    fig, ax = plt.subplots(figsize=(len(alignment[0]), len(alignment)*0.3))
 
     # Plot the grid
     for pos in range(matrix.shape[1]):
         for seq in range(matrix.shape[0]):
-            ax.text(pos+0.5, seq+0.5, matrix[seq, pos], color=color_map_dict.get(matrix[seq, pos], 'black'), ha='center', va='center')
+            ax.text(pos+0.5, seq+0.5, matrix[seq, pos], color='black', ha='center', va='center', fontsize=8)
+            ax.add_patch(Rectangle((pos, seq), 1, 1, color=color_map_dict.get(matrix[seq, pos], 'white')))
 
     # Highlight the specified positions
     for pos in highlight_positions:
         if plot_range[0] <= pos <= plot_range[1]: 
-            ax.axvspan(xmin=pos - plot_range[0], xmax=pos - plot_range[0] + 1, color='red', alpha=0.3)
+            ax.add_patch(Rectangle((pos - plot_range[0], -0.5), 1, matrix.shape[0], color='red', alpha=0.3))
 
     # Set the labels for the axes
     ax.set_xticks(np.arange(matrix.shape[1])+0.5)
-    ax.set_xticklabels(np.arange(plot_range[0], plot_range[1] + 1))
+    ax.set_xticklabels(np.arange(plot_range[0], plot_range[1] + 1), fontsize=8)
     ax.set_yticks(np.arange(matrix.shape[0])+0.5)
-    ax.set_yticklabels([rec.id for rec in alignment], rotation=0)
-    ax.set_title(os.path.basename(input_file))
-
-    # Remove axes
-    ax.axis('off')
+    ax.set_yticklabels([rec.id for rec in alignment], rotation=0, fontsize=8)
+    ax.set_title(os.path.basename(input_file), fontweight='bold', pad=20)
     
     # Adjust layout
     fig.tight_layout()
-    
+
     # Save the plot as PDF and PNG
     plt.savefig(os.path.join(output_folder, os.path.basename(input_file) + ".pdf"))
     plt.savefig(os.path.join(output_folder, os.path.basename(input_file) + ".png"))
     plt.close()  # Close the plot
-
 
 def main():
     # Define the command-line arguments
@@ -84,32 +67,29 @@ def main():
     parser.add_argument('-i', '--input_file', required=True,
                         help='Input fasta file.')
     parser.add_argument('-p', '--positions', type=str, default='',
-                        help='Positions for highlighting, comma separated. Ranges can be specified with a dash.')
+                        help='Positions to highlight. Can be a single number, a range (e.g., "1-3"), or multiple numbers/ranges separated by commas (e.g., "1,3,5-7").')
     parser.add_argument('-r', '--range', type=str, required=True,
-                        help='Range of positions to plot, two integers separated by a dash.')
-    parser.add_argument('-c', '--color_scheme', type=str, required=True,
-                        help='Path to the color scheme JSON file.')
+                        help='Range of the alignment to plot, e.g., "1-100".')
+    parser.add_argument('-c', '--color_map', type=str, required=True,
+                        help='JSON file with color map for amino acids.')
+    parser.add_argument('-o', '--output_folder', type=str, default='.',
+                        help='Folder to save the output plot.')
+
+    # Parse the command-line arguments
     args = parser.parse_args()
 
-    # Parse the positions for highlighting and the range for plotting
-    highlight_positions = parse_positions(args.positions) if args.positions else []
-    start, end = parse_range(args.range)
+    # Parse the positions to highlight
+    highlight_positions = parse_positions(args.positions)
+    
+    # Load the color map from the JSON file
+    color_map_dict = load_color_map_from_json(args.color_map)
 
-    # Check if the range is valid
-    if start is None or end is None:
-        return
-    plot_range = (start, end)
+    # Parse the range
+    range_start, range_end = map(int, args.range.split('-'))
+    plot_range = range_start, range_end
 
-    # Get the color map dictionary from the color scheme JSON file
-    color_map_dict = create_color_map_dict(args.color_scheme)
+    # Plot the MSA
+    plot_msa(args.input_file, args.output_folder, plot_range, highlight_positions, color_map_dict)
 
-    # Get the base name of the file (without extension)
-    base_name = os.path.splitext(os.path.basename(args.input_file))[0]
-    # Create the output folder based on the base name of the file
-    output_folder = os.path.join(os.getcwd(), base_name)
-    os.makedirs(output_folder, exist_ok=True)
-
-    plot_msa(args.input_file, output_folder, plot_range, highlight_positions, color_map_dict)
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
