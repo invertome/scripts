@@ -33,7 +33,7 @@ def plot_msa(input_file, output_folder, plot_range, highlight_positions, color_m
     matrix = np.array([list(rec) for rec in alignment], dtype='U1')
 
     # Create a figure and axis for the plot
-    fig, ax = plt.subplots(figsize=(len(alignment[0]), len(alignment)*0.3))
+    fig, ax = plt.subplots(figsize=(len(alignment[0])*0.3, len(alignment)*0.3))
 
     # Plot the grid
     for pos in range(matrix.shape[1]):
@@ -44,29 +44,34 @@ def plot_msa(input_file, output_folder, plot_range, highlight_positions, color_m
     # Highlight the specified positions
     for pos in highlight_positions:
         if plot_range[0] <= pos <= plot_range[1]: 
-            ax.add_patch(Rectangle((pos - plot_range[0], -0.5), 1, matrix.shape[0], color='red', alpha=0.3))
+            ax.add_patch(Rectangle((pos - plot_range[0], -0.5), 1, matrix.shape[0], color='red', fill=False, lw=2, linestyle='-', alpha=0.3))
 
     # Set the labels for the axes
     ax.set_xticks(np.arange(matrix.shape[1])+0.5)
-    ax.set_xticklabels(np.arange(plot_range[0], plot_range[1] + 1), fontsize=8)
+    ax.set_xticklabels(np.arange(plot_range[0], plot_range[1] + 1), fontsize=8, ha='center')
     ax.set_yticks(np.arange(matrix.shape[0])+0.5)
-    ax.set_yticklabels([rec.id for rec in alignment], rotation=0, fontsize=8)
+    ax.set_yticklabels([rec.id for rec in alignment], rotation=0, fontsize=8, va='center')
+
+    # Increase the space between the title and the plot
     ax.set_title(os.path.basename(input_file), fontweight='bold', pad=20)
     
     # Adjust layout
+    ax.set_xlim(-0.5, matrix.shape[1]-0.5)
+    ax.set_ylim(-0.5, matrix.shape[0]-0.5)
+    ax.invert_yaxis()  # To preserve the order of sequences as in the fasta file
     fig.tight_layout()
 
     # Save the plot as PDF and PNG
-    plt.savefig(os.path.join(output_folder, os.path.basename(input_file) + ".pdf"))
-    plt.savefig(os.path.join(output_folder, os.path.basename(input_file) + ".png"))
-    plt.close()  # Close the plot
+    plt.savefig(os.path.join(output_folder, os.path.basename(input_file) + ".pdf"), bbox_inches='tight')
+    plt.savefig(os.path.join(output_folder, os.path.basename(input_file) + ".png"), dpi=300, bbox_inches='tight')
+    plt.close()
 
 def main():
-    # Define the command-line arguments
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-i', '--input_file', required=True,
-                        help='Input fasta file.')
-    parser.add_argument('-p', '--positions', type=str, default='',
+    # Create an argument parser
+    parser = argparse.ArgumentParser(description='Plot a multiple sequence alignment.')
+    parser.add_argument('-i', '--input_file', type=str, required=True,
+                        help='Input file with the multiple sequence alignment in FASTA format.')
+    parser.add_argument('-p', '--positions', type=str, required=False, default='',
                         help='Positions to highlight. Can be a single number, a range (e.g., "1-3"), or multiple numbers/ranges separated by commas (e.g., "1,3,5-7").')
     parser.add_argument('-r', '--range', type=str, required=True,
                         help='Range of the alignment to plot, e.g., "1-100".')
