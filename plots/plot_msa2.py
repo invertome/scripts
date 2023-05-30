@@ -38,13 +38,11 @@ def plot_msa(input_file, output_folder, plot_range, highlight_positions, color_m
     # Plot the grid
     for pos in range(matrix.shape[1]):
         for seq in range(matrix.shape[0]):
-            ax.text(pos+0.5, seq+0.5, matrix[seq, pos], color='black', ha='center', va='center', fontsize=8)
+            if pos + plot_range[0] in highlight_positions:  # if position needs to be highlighted
+                ax.text(pos+0.5, seq+0.5, matrix[seq, pos], color='black', ha='center', va='center', fontsize=10, fontweight='bold')
+            else:
+                ax.text(pos+0.5, seq+0.5, matrix[seq, pos], color='black', ha='center', va='center', fontsize=8)
             ax.add_patch(Rectangle((pos, seq), 1, 1, color=color_map_dict.get(matrix[seq, pos], 'white')))
-
-    # Highlight the specified positions
-    for pos in highlight_positions:
-        if plot_range[0] <= pos <= plot_range[1]: 
-            ax.add_patch(Rectangle((pos - plot_range[0], -0.5), 1, matrix.shape[0], color='red', fill=False, lw=2, linestyle='-', alpha=0.3))
 
     # Set the labels for the axes
     ax.set_xticks(np.arange(matrix.shape[1])+0.5)
@@ -54,10 +52,10 @@ def plot_msa(input_file, output_folder, plot_range, highlight_positions, color_m
 
     # Increase the space between the title and the plot
     ax.set_title(os.path.basename(input_file), fontweight='bold', pad=20)
-    
+
     # Adjust layout
-    ax.set_xlim(-0.5, matrix.shape[1]-0.5)
-    ax.set_ylim(-0.5, matrix.shape[0]-0.5)
+    ax.set_xlim(-0.5, matrix.shape[1] + 0.5)
+    ax.set_ylim(-0.5, matrix.shape[0] + 0.5)
     ax.invert_yaxis()  # To preserve the order of sequences as in the fasta file
     fig.tight_layout()
 
