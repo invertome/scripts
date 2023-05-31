@@ -11,6 +11,12 @@ import logomaker as lm
 from collections import Counter
 
 def parse_positions(positions_str):
+    """
+    Parses a string of positions, handling ranges and individual positions.
+
+    :param positions_str: A string of positions, with ranges indicated by '-'
+    :return: A list of integers representing the positions
+    """
     positions = []
     for pos_str in positions_str.split(','):
         if '-' in pos_str:  # If there's a dash, it represents a range
@@ -21,12 +27,24 @@ def parse_positions(positions_str):
     return positions  # Return the list of positions
 
 def load_color_map_from_json(json_file):
+    """
+    Loads a color map from a JSON file.
+
+    :param json_file: Path to the JSON file
+    :return: A dictionary representing the color map
+    """
     with open(json_file, 'r') as file:
         data = json.load(file)
     color_map_dict = data['colors']
     return color_map_dict
 
 def compute_counts(matrix):
+    """
+    Computes the count of each amino acid at each position in the alignment.
+
+    :param matrix: A 2D numpy array representing the alignment
+    :return: A DataFrame with the counts of each amino acid at each position
+    """
     alphabet = 'ACDEFGHIKLMNPQRSTVWY-'
     counts_df = pd.DataFrame(0, index=range(matrix.shape[1]), columns=list(alphabet))
     for pos in range(matrix.shape[1]):
@@ -37,6 +55,15 @@ def compute_counts(matrix):
     return counts_df
 
 def plot_msa(input_file, output_folder, plot_range, highlight_positions, color_map_dict):
+    """
+    Plots a multiple sequence alignment (MSA).
+
+    :param input_file: Path to the input file in FASTA format
+    :param output_folder: Path to the output folder
+    :param plot_range: A tuple (start, end) specifying the range of positions to plot
+    :param highlight_positions: A list of positions to highlight
+    :param color_map_dict: A dictionary mapping amino acids to colors
+    """
     # Read the alignment from the input file
     alignment = AlignIO.read(input_file, "fasta")
     # Select only the sequences in the specified range
@@ -96,15 +123,17 @@ def plot_msa(input_file, output_folder, plot_range, highlight_positions, color_m
         for key, value in color_map_dict.items():
             file.write(f"{key} : {value}\n")
 
-
 def main():
+    """
+    Main function to parse arguments and call the plot_msa function.
+    """
     # Create an argument parser
-    parser = argparse.ArgumentParser(description='Plot a multiple sequence alignment.')
-    parser.add_argument('-i', '--input_file', type=str, required=True, help='Input file with the multiple sequence alignment in FASTA format.')
-    parser.add_argument('-p', '--positions', type=str, required=False, default='', help='Positions to highlight. Can be a single number, a range (e.g., "1-3"), or multiple numbers/ranges separated by commas (e.g., "1,3,5-7").')
-    parser.add_argument('-r', '--range', type=str, required=True, help='Range of the alignment to plot, e.g., "1-100".')
-    parser.add_argument('-c', '--color_map', type=str, required=True, help='JSON file with color map for amino acids.')
-    parser.add_argument('-o', '--output_folder', type=str, default='.', help='Folder to save the output plot.')
+    parser = argparse.ArgumentParser(description='This script generates a plot for a multiple sequence alignment. It provides options to highlight specific positions and to use a custom color map.')
+    parser.add_argument('-i', '--input_file', type=str, required=True, help='Path to the input file containing the multiple sequence alignment in FASTA format.')
+    parser.add_argument('-p', '--positions', type=str, required=False, default='', help='Positions in the alignment to highlight. This can be a single number, a range (e.g., "1-3"), or multiple numbers/ranges separated by commas (e.g., "1,3,5-7").')
+    parser.add_argument('-r', '--range', type=str, required=True, help='Range of positions in the alignment to plot. This should be in the format "start-end", e.g., "1-100".')
+    parser.add_argument('-c', '--color_map', type=str, required=True, help='Path to a JSON file containing a color map for the amino acids. The file should be a dictionary with the amino acids as keys and the corresponding colors as values.')
+    parser.add_argument('-o', '--output_folder', type=str, default='.', help='Path to the folder where the output plot should be saved.')
 
     # Parse the command-line arguments
     args = parser.parse_args()
