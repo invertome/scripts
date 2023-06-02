@@ -66,6 +66,17 @@ def plot_msa(input_file, output_folder, plot_range, highlight_positions, color_m
     """
     # Read the alignment from the input file
     alignment = AlignIO.read(input_file, "fasta")
+
+    # Compute the original range for each sequence before slicing
+    original_ranges = []
+    for seq in alignment:
+        seq_str = str(seq.seq)
+        non_gap_indices = [i+1 for i, char in enumerate(seq_str) if char != '-']
+        in_range_non_gap_indices = [idx for idx in non_gap_indices if plot_range[0] <= idx <= plot_range[1]]
+        original_range = (in_range_non_gap_indices[0], in_range_non_gap_indices[-1]) if in_range_non_gap_indices else (None, None)
+        seq_id = seq.id.split('/')[0] if '/' in seq.id else seq.id
+        original_ranges.append((seq_id.replace('_', ' '), original_range))
+
     # Select only the sequences in the specified range
     alignment = alignment[:, plot_range[0]-1:plot_range[1]]
 
@@ -91,12 +102,14 @@ def plot_msa(input_file, output_folder, plot_range, highlight_positions, color_m
     # Set the axis limits
     ax.set_xlim(0, matrix.shape[1])
     ax.set_ylim(0, matrix.shape[0])
-    
+
     # Add x and y axis labels
     ax.set_xticks(np.arange(matrix.shape[1])+0.5)
     ax.set_xticklabels(range(plot_range[0], plot_range[1]+1), rotation=90, fontsize=6)
     ax.set_yticks(np.arange(matrix.shape[0])+0.5)
-    ax.set_yticklabels([rec.id for rec in reversed(alignment)], fontsize=8, va='center')
+
+    # Modify y labels to include sequence range
+    ax.set_yticklabels([f"{seq_id.replace('_', ' ')} ({rng[0]}-{rng[1]})" if rng[0] is not None and rng[1] is not None else seq_id.replace('_', ' ') for seq_id, rng in reversed(original_ranges)], fontsize=8, va='center')
 
     # Turn off the tick marks
     ax.tick_params(axis=u'both', which=u'both',length=0)
@@ -106,7 +119,7 @@ def plot_msa(input_file, output_folder, plot_range, highlight_positions, color_m
 
     # Convert counts to percentages for sequence logo
     counts_df = counts_df.divide(counts_df.sum(axis=1), axis=0)
-    
+
     # Make a sequence logo
     counts_df.index = range(plot_range[0], plot_range[1]+1)
     lm.Logo(counts_df, ax=ax_logo, color_scheme=color_map_dict)
