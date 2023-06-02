@@ -36,6 +36,8 @@ def load_color_map_from_json(json_file):
     with open(json_file, 'r') as file:
         data = json.load(file)
     color_map_dict = data['colors']
+    # Update the color map with a color for the gap symbol
+    color_map_dict['-'] = 'white'
     return color_map_dict
 
 def compute_counts(matrix):
@@ -72,8 +74,10 @@ def plot_msa(input_file, output_folder, plot_range, highlight_positions, color_m
     for seq in alignment:
         seq_str = str(seq.seq)
         non_gap_indices = [i+1 for i, char in enumerate(seq_str) if char != '-']
-        in_range_non_gap_indices = [idx for idx in non_gap_indices if plot_range[0] <= idx <= plot_range[1]]
-        original_range = (in_range_non_gap_indices[0], in_range_non_gap_indices[-1]) if in_range_non_gap_indices else (None, None)
+        if non_gap_indices:
+            original_range = (non_gap_indices[0] - non_gap_indices.count(1) + 1, non_gap_indices[-1] - non_gap_indices.count(1) + 1)
+        else:
+            original_range = (None, None)
         seq_id = seq.id.split('/')[0] if '/' in seq.id else seq.id
         original_ranges.append((seq_id.replace('_', ' '), original_range))
 
@@ -107,9 +111,7 @@ def plot_msa(input_file, output_folder, plot_range, highlight_positions, color_m
     ax.set_xticks(np.arange(matrix.shape[1])+0.5)
     ax.set_xticklabels(range(plot_range[0], plot_range[1]+1), rotation=90, fontsize=6)
     ax.set_yticks(np.arange(matrix.shape[0])+0.5)
-
-    # Modify y labels to include sequence range
-    ax.set_yticklabels([f"{seq_id.replace('_', ' ')} ({rng[0]}-{rng[1]})" if rng[0] is not None and rng[1] is not None else seq_id.replace('_', ' ') for seq_id, rng in reversed(original_ranges)], fontsize=8, va='center')
+    ax.set_yticklabels([f"{seq_id} " for seq_id, rng in reversed(original_ranges)], fontsize=8, va='center')
 
     # Turn off the tick marks
     ax.tick_params(axis=u'both', which=u'both',length=0)
