@@ -30,12 +30,11 @@ def main():
     except FileNotFoundError as e:
         logging.error(f"File not found: {e}")
         return
-
-    blast_output_file = os.path.join(args.output_dir, "blast_output.xml")
+        
     with ProcessPoolExecutor(max_workers=args.threads) as executor:
-        blast_outputs = list(executor.map(pipeline_utils.perform_blast_search, mrna_sequences, [args.genome_fasta] * len(mrna_sequences), [blast_output_file] * len(mrna_sequences), [args.evalue] * len(mrna_sequences)))
+        blast_outputs = list(executor.map(pipeline_utils.perform_blast_search, mrna_sequences, [args.genome_fasta] * len(mrna_sequences), [f"{args.output_dir}/blast_output_{i}.xml" for i in range(len(mrna_sequences))], [args.evalue] * len(mrna_sequences)))
 
-    extracted_sequences = pipeline_utils.extract_upstream_sequences(blast_outputs, genome_sequence, args.upstream_length)
+       extracted_sequences = pipeline_utils.extract_upstream_sequences(blast_outputs, genome_sequence, args.upstream_length)
     output_fasta_file = os.path.join(args.output_dir, "extracted_sequences.fasta")
     pipeline_utils.output_fasta(extracted_sequences, output_fasta_file)
 
