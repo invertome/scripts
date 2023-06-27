@@ -103,5 +103,6 @@ def predict_promoters(input_fasta_file, output_file):
     """
     Run promoter prediction using the Promoter2.0 tool.
     """
-    promoter_cline = ["promoter2", input_fasta_file, ">", output_file]
-    subprocess.run(promoter_cline, shell=True, check=True)
+    promoter_cline = ["promoter2", input_fasta_file, output_file]
+    subprocess.run(promoter_cline, check=True)
+
