@@ -26,7 +26,7 @@ def main():
 
     # Run the pipeline
     try:
-        mrna_sequences, genome_sequence = pipeline_utils.parse_input_files(args.mrna_fasta, args.genome_fasta)
+        mrna_sequences, genome_sequences = pipeline_utils.parse_input_files(args.mrna_fasta, args.genome_fasta)
     except FileNotFoundError as e:
         logging.error(f"File not found: {e}")
         return
@@ -37,13 +37,14 @@ def main():
         tasks = [executor.submit(pipeline_utils.perform_blast_search, mrna, genome_db, args.evalue) for mrna in mrna_sequences]
         blast_outputs = [task.result() for task in tasks]
 
-    extracted_sequences = pipeline_utils.extract_upstream_sequences(blast_outputs, genome_sequence, args.upstream_length)
+    extracted_sequences = pipeline_utils.extract_upstream_sequences(blast_outputs, genome_sequences, args.upstream_length)
     output_fasta_file = os.path.join(args.output_dir, "extracted_sequences.fasta")
     pipeline_utils.output_fasta(extracted_sequences, output_fasta_file)
 
     if args.promoter:
         promoter_output_file = os.path.join(args.output_dir, "promoter_predictions.txt")
         pipeline_utils.predict_promoters(output_fasta_file, promoter_output_file)
+
 
 if __name__ == "__main__":
     main()
