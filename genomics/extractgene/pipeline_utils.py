@@ -65,8 +65,13 @@ def extract_upstream_sequences(blast_outputs, genome_sequence, upstream_length):
             if alignment.hsps:
                 hsp = alignment.hsps[0]  # only take top hsp
 
-                start = hsp.sbjct_start - upstream_length
-                end = hsp.sbjct_start - 1
+                # Check the orientation of the alignment
+                if hsp.frame[1] == 1:  # subject (genome) sequence is forward-oriented
+                    start = hsp.sbjct_start - upstream_length
+                    end = hsp.sbjct_start - 1
+                else:  # subject (genome) sequence is reverse-oriented
+                    start = hsp.sbjct_end + 1
+                    end = hsp.sbjct_end + upstream_length
 
                 if start < 1:
                     start = 1
@@ -81,6 +86,7 @@ def extract_upstream_sequences(blast_outputs, genome_sequence, upstream_length):
             logging.warning(f"No alignments found for {blast_record.query}")  # Debug print statement
 
     return extracted_sequences
+
 
 def output_fasta(sequences, output_file):
     with open(output_file, "w") as output_handle:
