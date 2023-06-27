@@ -16,31 +16,45 @@ def parse_input_files(mrna_fasta, genome_fasta):
     genome_sequence = next(SeqIO.parse(genome_fasta, "fasta"))
 
     return mrna_sequences, genome_sequence
+    
+def create_blast_database(genome_fasta):
+    """
+    Create a BLAST database from a genome FASTA file using NcbimakeblastdbCommandline.
+    """
+    # Set database name
+    db_name = os.path.splitext(genome_fasta)[0]
+
+    # Create the BLAST database
+    makeblastdb_cline = NcbimakeblastdbCommandline(dbtype="nucl", input_file=genome_fasta, out=db_name)
+    makeblastdb_cline()
+
+    return db_name
 
 def perform_blast_search(mrna, genome_db, evalue):
     """
     Perform BLAST search using NcbiblastnCommandline.
     """
     # Create a temporary FASTA file for the current mRNA sequence
-    temp_mrna_fasta = Path(genome_db.parent, f"{mrna.id}_temp.fasta")
+    temp_mrna_fasta = f"{genome_db}_temp.fasta"
     SeqIO.write(mrna, temp_mrna_fasta, "fasta")
 
     # Temporary output file
-    blast_output_file = Path(genome_db.parent, f"{mrna.id}_blast.xml")
+    blast_output_file = f"{genome_db}_blast.xml"
     
     # Perform the BLAST search
-    blastn_cline = NcbiblastnCommandline(query=str(temp_mrna_fasta), db=str(genome_db), evalue=evalue, outfmt=5, out=str(blast_output_file))
+    blastn_cline = NcbiblastnCommandline(query=temp_mrna_fasta, db=genome_db, evalue=evalue, outfmt=5, out=blast_output_file)
     blastn_cline()
 
     # Parse the BLAST output
-    with blast_output_file.open() as blast_output_handle:
+    with open(blast_output_file) as blast_output_handle:
         blast_record = NCBIXML.read(blast_output_handle)
 
     # Clean up temporary files
-    temp_mrna_fasta.unlink()
-    blast_output_file.unlink()
+    os.remove(temp_mrna_fasta)
+    os.remove(blast_output_file)
 
     return blast_record
+
 
 def extract_upstream_sequences(blast_outputs, genome_sequence, upstream_length):
     extracted_sequences = []
