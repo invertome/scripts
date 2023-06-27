@@ -42,18 +42,23 @@ def extract_upstream_sequences(blast_outputs, genome_sequence, upstream_length):
     extracted_sequences = []
 
     for i, blast_record in enumerate(blast_outputs):
-        for alignment in blast_record.alignments:
-            for hsp in alignment.hsps:
+        if blast_record.alignments:
+            alignment = blast_record.alignments[0]  # only take top alignment
+            if alignment.hsps:
+                hsp = alignment.hsps[0]  # only take top hsp
+
                 start = hsp.sbjct_start - upstream_length
                 end = hsp.sbjct_start - 1
 
                 if start < 1:
                     start = 1
 
-                extracted_seq = genome_sequence.seq[start - 1:end]
-                extracted_sequences.append((blast_record.query, extracted_seq))  # Keep original ID
+                if start < end and end <= len(genome_sequence):  # check coordinates are valid
+                    extracted_seq = genome_sequence.seq[start - 1:end]
+                    extracted_sequences.append((blast_record.query, extracted_seq))  # Keep original ID
 
     return extracted_sequences
+
 
 def output_fasta(sequences, output_file):
     with open(output_file, "w") as output_handle:
