@@ -39,12 +39,9 @@ def perform_blast_search(mrna, genome_fasta, blast_output_file, evalue):
     return blast_record
 
 def extract_upstream_sequences(blast_outputs, genome_sequence, upstream_length):
-    """
-    Extract upstream sequences from the genome based on BLAST output.
-    """
     extracted_sequences = []
 
-    for blast_record in blast_outputs:
+    for i, blast_record in enumerate(blast_outputs):
         for alignment in blast_record.alignments:
             for hsp in alignment.hsps:
                 start = hsp.sbjct_start - upstream_length
@@ -54,17 +51,14 @@ def extract_upstream_sequences(blast_outputs, genome_sequence, upstream_length):
                     start = 1
 
                 extracted_seq = genome_sequence.seq[start - 1:end]
-                extracted_sequences.append(extracted_seq)
+                extracted_sequences.append((blast_record.query, extracted_seq))  # Keep original ID
 
     return extracted_sequences
 
 def output_fasta(sequences, output_file):
-    """
-    Write the extracted sequences to a FASTA file.
-    """
     with open(output_file, "w") as output_handle:
-        for i, seq in enumerate(sequences):
-            output_handle.write(f">seq_{i}\n{seq}\n")
+        for i, (original_id, seq) in enumerate(sequences):
+            output_handle.write(f">{original_id}_seq_{i}\n{seq}\n")  # Include original ID in header
 
 def predict_promoters(input_fasta_file, output_file):
     """
