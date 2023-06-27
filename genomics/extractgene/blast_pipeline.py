@@ -33,9 +33,8 @@ def main():
 
     genome_db = pipeline_utils.create_blast_database(args.genome_fasta)
 
-    with ProcessPoolExecutor(max_workers=args.threads) as executor:
-        tasks = [executor.submit(pipeline_utils.perform_blast_search, mrna, genome_db, args.evalue) for mrna in mrna_sequences]
-        blast_outputs = [task.result() for task in tasks]
+    # No longer use ProcessPoolExecutor
+    blast_outputs = [pipeline_utils.perform_blast_search(mrna, genome_db, args.evalue, args.threads) for mrna in mrna_sequences]
 
     extracted_sequences = pipeline_utils.extract_upstream_sequences(blast_outputs, genome_sequences, args.upstream_length)
     output_fasta_file = os.path.join(args.output_dir, "extracted_sequences.fasta")
