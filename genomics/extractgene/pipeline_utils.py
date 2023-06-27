@@ -65,7 +65,7 @@ def extract_upstream_sequences(blast_outputs, genome_sequences, upstream_length)
             alignment = blast_record.alignments[0]  # only take top alignment
             if alignment.hsps:
                 hsp = alignment.hsps[0]  # only take top hsp
-                reference_id = alignment.hit_def
+                reference_id = alignment.hit_def.split()[0]  # split at the first whitespace
 
                 if reference_id not in genome_sequences:
                     logging.error(f"Reference {reference_id} not found in genome sequences.")
@@ -89,6 +89,7 @@ def extract_upstream_sequences(blast_outputs, genome_sequences, upstream_length)
             logging.warning(f"No alignments found for {blast_record.query}")  # Debug print statement
 
     return extracted_sequences
+
 
 
 
