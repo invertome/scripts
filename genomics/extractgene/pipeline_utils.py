@@ -22,7 +22,7 @@ def perform_blast_search(mrna, genome_fasta, blast_output_file, evalue):
     makeblastdb_cline()
 
     # Create a temporary FASTA file for the current mRNA sequence
-    temp_mrna_fasta = f"{mrna.id}_temp.fasta"
+    temp_mrna_fasta = os.path.join(os.path.dirname(genome_fasta), f"{mrna.id}_temp.fasta")
     SeqIO.write(mrna, temp_mrna_fasta, "fasta")
 
     # Perform the BLAST search
