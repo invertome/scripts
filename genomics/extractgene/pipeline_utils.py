@@ -55,9 +55,13 @@ def extract_upstream_sequences(blast_outputs, genome_sequence, upstream_length):
 
                 if start < end and end <= len(genome_sequence):  # check coordinates are valid
                     extracted_seq = genome_sequence.seq[start - 1:end]
+                    print(f"Extracted sequence for {blast_record.query}: {extracted_seq}")  # Debug print statement
                     extracted_sequences.append((blast_record.query, extracted_seq))  # Keep original ID
+        else:
+            print(f"No alignments found for {blast_record.query}")  # Debug print statement
 
     return extracted_sequences
+
 
 
 def output_fasta(sequences, output_file):
