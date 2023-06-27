@@ -6,7 +6,6 @@ from Bio import SeqIO
 from Bio.Blast.Applications import NcbiblastnCommandline, NcbimakeblastdbCommandline
 from Bio.Blast import NCBIXML
 import pipeline_utils
-from pathlib import Path
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -28,17 +27,15 @@ def main():
     # Run the pipeline
     try:
         mrna_sequences, genome_sequence = pipeline_utils.parse_input_files(args.mrna_fasta, args.genome_fasta)
-        
-        # Create BLAST database for the genome sequence with parsed sequence IDs
-        genome_db = Path(args.output_dir, "genome_db")
-        makeblastdb_cline = NcbimakeblastdbCommandline(dbtype="nucl", input_file=str(args.genome_fasta), out=str(genome_db), parse_seqids=True)
-        makeblastdb_cline()
     except FileNotFoundError as e:
         logging.error(f"File not found: {e}")
         return
-        
+
+    genome_db = pipeline_utils.create_blast_database(args.genome_fasta)
+
     with ProcessPoolExecutor(max_workers=args.threads) as executor:
-        blast_outputs = list(executor.map(pipeline_utils.perform_blast_search, mrna_sequences, [genome_db] * len(mrna_sequences), [args.evalue] * len(mrna_sequences)))
+        tasks = [executor.submit(pipeline_utils.perform_blast_search, mrna, genome_db, args.evalue) for mrna in mrna_sequences]
+        blast_outputs = [task.result() for task in tasks]
 
     extracted_sequences = pipeline_utils.extract_upstream_sequences(blast_outputs, genome_sequence, args.upstream_length)
     output_fasta_file = os.path.join(args.output_dir, "extracted_sequences.fasta")
