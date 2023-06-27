@@ -31,7 +31,7 @@ def create_blast_database(genome_fasta):
 
     return db_name
 
-def perform_blast_search(mrna, genome_db, evalue):
+def perform_blast_search(mrna, genome_db, evalue, threads):
     """
     Perform BLAST search using NcbiblastnCommandline.
     """
@@ -43,7 +43,7 @@ def perform_blast_search(mrna, genome_db, evalue):
     blast_output_file = f"{genome_db}_blast.xml"
     
     # Perform the BLAST search
-    blastn_cline = NcbiblastnCommandline(query=temp_mrna_fasta, db=genome_db, evalue=evalue, outfmt=5, out=blast_output_file)
+    blastn_cline = NcbiblastnCommandline(query=temp_mrna_fasta, db=genome_db, evalue=evalue, outfmt=5, out=blast_output_file, num_threads=threads)
     blastn_cline()
 
     # Parse the BLAST output
@@ -55,6 +55,7 @@ def perform_blast_search(mrna, genome_db, evalue):
     os.remove(blast_output_file)
 
     return blast_record
+
 
 
 def extract_upstream_sequences(blast_outputs, genome_sequences, upstream_length):
