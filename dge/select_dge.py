@@ -44,7 +44,7 @@ def plot_data(df, transcript, groups_to_compare, tukey_result, output_folder):
         for fmt in ['png', 'pdf']:
             plt.savefig(os.path.join(output_folder, f"{transcript}_{plot_type}.{fmt}"))
         plt.close()
-
+        
 # Function to perform ANOVA and post-hoc Tukey's HSD test.
 def perform_anova(df, transcript, output_folder):
     mod = sm.formula.ols('TPM ~ Stage', data=df).fit()
@@ -91,5 +91,3 @@ def main(metadata_file, transcripts_file, groups_file, input_folder, output_fold
 
 if __name__ == "__main__":
     main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5])
-
-
