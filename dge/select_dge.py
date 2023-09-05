@@ -11,16 +11,19 @@ from statsmodels.stats.multicomp import MultiComparison
 from sklearn.decomposition import PCA
 
 # Extract TPM values from the quant.sf files for the provided transcripts.
-def extract_tpm_from_files(transcripts, input_folder, filenames):
-    df_list = []
-    for file in filenames:
-        path = os.path.join(input_folder, file, 'quant.sf')
+def extract_tpm_from_files(transcripts, input_folder, metadata_df):
+    dfs = []
+
+    for index, row in metadata_df.iterrows():
+        path = os.path.join(input_folder, row['filename'], 'quant.sf')
         df = pd.read_csv(path, sep='\t', usecols=['Name', 'TPM'])
         df = df[df['Name'].isin(transcripts)]
-        df = df.set_index('Name')
-        df.columns = [file]
-        df_list.append(df)
-    return pd.concat(df_list, axis=1)
+        df.set_index('Name', inplace=True)
+        df.columns = [row['SampleID']]
+        dfs.append(df)
+
+    return pd.concat(dfs, axis=1)
+
 
 # Plotting function for each transcript using seaborn for better aesthetics.
 def plot_data(df, transcript, output_folder):
@@ -71,7 +74,8 @@ def main(metadata_file, transcripts_file, groups_file, input_folder, output_fold
     groups_to_compare = pd.read_csv(groups_file, header=None).iloc[:,0].tolist()
 
     metadata = metadata[metadata['Stage'].isin(groups_to_compare)]
-    tpm_matrix = extract_tpm_from_files(transcripts, input_folder, metadata['filename'].tolist())
+    tpm_matrix = extract_tpm_from_files(transcripts, input_folder, metadata)
+
 
     for transcript in transcripts:
         df_transcript = tpm_matrix.loc[transcript].reset_index()
