@@ -1,3 +1,6 @@
+# Example command to run the script:
+# python select_dge.py [metadata_file] [transcripts_file] [groups_file] [input_folder] [output_folder]
+
 import pandas as pd
 import os
 import sys
@@ -7,6 +10,7 @@ import statsmodels.api as sm
 from statsmodels.stats.multicomp import MultiComparison
 from sklearn.decomposition import PCA
 
+# Extract TPM values from the quant.sf files for the provided transcripts.
 def extract_tpm_from_files(transcripts, input_folder, filenames):
     df_list = []
     for file in filenames:
@@ -18,6 +22,7 @@ def extract_tpm_from_files(transcripts, input_folder, filenames):
         df_list.append(df)
     return pd.concat(df_list, axis=1)
 
+# Plotting function for each transcript using seaborn for better aesthetics.
 def plot_data(df, transcript, output_folder):
     color_palette = sns.color_palette("colorblind")
     sns.set_palette(color_palette)
@@ -36,6 +41,7 @@ def plot_data(df, transcript, output_folder):
             plt.savefig(os.path.join(output_folder, f"{transcript}_{plot_type}.{fmt}"))
         plt.close()
 
+# Function to perform ANOVA and post-hoc Tukey's HSD test.
 def perform_anova(df, transcript, output_folder):
     mod = sm.formula.ols('TPM ~ Stage', data=df).fit()
     aov_table = sm.stats.anova_lm(mod, typ=2)
@@ -46,6 +52,7 @@ def perform_anova(df, transcript, output_folder):
         f.write('\n\n')
         f.write(str(tukey_result))
 
+# Function to perform PCA when more than 3 transcripts are provided.
 def perform_pca(df, output_folder):
     pca = PCA(n_components=2)
     principalComponents = pca.fit_transform(df)
@@ -57,6 +64,7 @@ def perform_pca(df, output_folder):
         plt.savefig(os.path.join(output_folder, f"PCA_Plot.{fmt}"))
     plt.close()
 
+# Main function that performs the entire workflow.
 def main(metadata_file, transcripts_file, groups_file, input_folder, output_folder):
     metadata = pd.read_csv(metadata_file)
     transcripts = pd.read_csv(transcripts_file, header=None).iloc[:,0].tolist()
@@ -78,3 +86,5 @@ def main(metadata_file, transcripts_file, groups_file, input_folder, output_fold
 
 if __name__ == "__main__":
     main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5])
+
+
