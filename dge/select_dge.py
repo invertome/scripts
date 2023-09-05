@@ -26,20 +26,21 @@ def extract_tpm_from_files(transcripts, input_folder, metadata_df):
 
 
 # Plotting function for each transcript using seaborn for better aesthetics.
-def plot_data(df, transcript, output_folder):
-    color_palette = sns.color_palette("colorblind")
-    sns.set_palette(color_palette)
+def plot_data(df, transcript, groups_to_compare, tukey_result, output_folder):
+    # Grayscale palette
+    gray_palette = sns.color_palette("gray", len(groups_to_compare))
+    sns.set_palette(gray_palette)
 
-    for plot_type in ['box', 'bar', 'violin']:
+    for plot_type in ['bar']:  # Commented out 'box' and 'violin'
         plt.figure()
-        if plot_type == 'box':
-            sns.boxplot(x='Stage', y='TPM', data=df)
-        elif plot_type == 'bar':
-            sns.barplot(x='Stage', y='TPM', data=df)
-        elif plot_type == 'violin':
-            sns.violinplot(x='Stage', y='TPM', data=df)
-        
+        ax = sns.barplot(x='Stage', y='TPM', data=df, order=groups_to_compare) # Plot in order of groups_to_compare
         plt.title(transcript)
+        
+        # Annotating significance based on Tukey's post-hoc test
+        for i, group in enumerate(groups_to_compare):
+            if tukey_result.reject[i]:
+                ax.text(i, max(df[df['Stage'] == group]['TPM']) + 0.05, '*', ha='center')
+
         for fmt in ['png', 'pdf']:
             plt.savefig(os.path.join(output_folder, f"{transcript}_{plot_type}.{fmt}"))
         plt.close()
@@ -54,6 +55,7 @@ def perform_anova(df, transcript, output_folder):
         f.write(str(aov_table))
         f.write('\n\n')
         f.write(str(tukey_result))
+    return tukey_result  # Return this for later use in plotting
 
 # Function to perform PCA when more than 3 transcripts are provided.
 def perform_pca(df, output_folder):
@@ -76,14 +78,13 @@ def main(metadata_file, transcripts_file, groups_file, input_folder, output_fold
     metadata = metadata[metadata['Stage'].isin(groups_to_compare)]
     tpm_matrix = extract_tpm_from_files(transcripts, input_folder, metadata)
 
-
     for transcript in transcripts:
         df_transcript = tpm_matrix.loc[transcript].reset_index()
         df_transcript.columns = ['SampleID', 'TPM']
         df_transcript = df_transcript.merge(metadata, on='SampleID', how='left')
         
-        plot_data(df_transcript, transcript, output_folder)
-        perform_anova(df_transcript, transcript, output_folder)
+        tukey_result = perform_anova(df_transcript, transcript, output_folder)
+        plot_data(df_transcript, transcript, groups_to_compare, tukey_result, output_folder)
         
     if len(transcripts) > 3:
         perform_pca(tpm_matrix.T, output_folder)
