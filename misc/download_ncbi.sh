@@ -126,6 +126,14 @@ process_protein_file() {
   fi
 }
 
+# Function to remove duplicate headers and sequences
+remove_duplicates() {
+  local input_file="$1"
+  local output_file="$2"
+
+  awk '/^>/ { if (seen[$0]++) next } { print }' "$input_file" > "$output_file"
+}
+
 # Function to process files and concatenate sequences
 process_files() {
   echo "Initializing output files for concatenated sequences..."
@@ -168,6 +176,15 @@ process_files() {
     cat "${temp_dir}"/*_protein.fasta >> concatenated_protein.fasta
   fi
 
+  echo "Removing duplicates..."
+  remove_duplicates concatenated_mrna_refseq.fasta concatenated_mrna_refseq_unique.fasta
+  remove_duplicates concatenated_protein_refseq.fasta concatenated_protein_refseq_unique.fasta
+
+  if [ "$REFSEQ_ONLY" = true ]; then
+    remove_duplicates concatenated_mrna.fasta concatenated_mrna_unique.fasta
+    remove_duplicates concatenated_protein.fasta concatenated_protein_unique.fasta
+  fi
+
   rm -rf "$temp_dir"
 }
 
@@ -185,25 +202,25 @@ process_files_parallel() {
 
 # Function to create BLAST databases
 create_blast_databases() {
-  if [ -s concatenated_mrna_refseq.fasta ]; then
+  if [ -s concatenated_mrna_refseq_unique.fasta ]; then
     echo "Creating BLAST database for mRNA..."
-    makeblastdb -in concatenated_mrna_refseq.fasta -dbtype nucl -out mrna_blast_db_refseq -parse_seqids || { echo "BLAST database creation for mRNA failed"; exit 1; }
+    makeblastdb -in concatenated_mrna_refseq_unique.fasta -dbtype nucl -out mrna_blast_db_refseq -parse_seqids || { echo "BLAST database creation for mRNA failed"; exit 1; }
   fi
 
-  if [ -s concatenated_protein_refseq.fasta ]; then
+  if [ -s concatenated_protein_refseq_unique.fasta ]; then
     echo "Creating BLAST database for proteins..."
-    makeblastdb -in concatenated_protein_refseq.fasta -dbtype prot -out protein_blast_db_refseq -parse_seqids || { echo "BLAST database creation for proteins failed"; exit 1; }
+    makeblastdb -in concatenated_protein_refseq_unique.fasta -dbtype prot -out protein_blast_db_refseq -parse_seqids || { echo "BLAST database creation for proteins failed"; exit 1; }
   fi
 
   if [ "$REFSEQ_ONLY" = true ]; then
-    if [ -s concatenated_mrna.fasta ]; then
+    if [ -s concatenated_mrna_unique.fasta ]; then
       echo "Creating BLAST database for unfiltered mRNA..."
-      makeblastdb -in concatenated_mrna.fasta -dbtype nucl -out mrna_blast_db -parse_seqids || { echo "BLAST database creation for unfiltered mRNA failed"; exit 1; }
+      makeblastdb -in concatenated_mrna_unique.fasta -dbtype nucl -out mrna_blast_db -parse_seqids || { echo "BLAST database creation for unfiltered mRNA failed"; exit 1; }
     fi
 
-    if [ -s concatenated_protein.fasta ]; then
+    if [ -s concatenated_protein_unique.fasta ]; then
       echo "Creating BLAST database for unfiltered proteins..."
-      makeblastdb -in concatenated_protein.fasta -dbtype prot -out protein_blast_db -parse_seqids || { echo "BLAST database creation for unfiltered proteins failed"; exit 1; }
+      makeblastdb -in concatenated_protein_unique.fasta -dbtype prot -out protein_blast_db -parse_seqids || { echo "BLAST database creation for unfiltered proteins failed"; exit 1; }
     fi
   fi
 }
