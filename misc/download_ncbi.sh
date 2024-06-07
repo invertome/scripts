@@ -76,19 +76,9 @@ process_mrna_file() {
       if [[ $line == ">"* ]]; then
         accession=$(echo "$line" | cut -d' ' -f1 | sed 's/>//')
         header=">${species}_${accession} ${line#*>}"
-        if [ "$REFSEQ_ONLY" = false ] || is_refseq_accession "$accession"; then
-          echo "${header}" >> "$temp_file"
-        fi
-        if [ "$REFSEQ_ONLY" = true ]; then
-          echo "${header}" >> "$temp_file"
-        fi
+        echo "${header}" >> "$temp_file"
       else
-        if [ "$REFSEQ_ONLY" = false ] || is_refseq_accession "$accession"; then
-          echo "$line" >> "$temp_file"
-        fi
-        if [ "$REFSEQ_ONLY" = true ]; then
-          echo "$line" >> "$temp_file"
-        fi
+        echo "$line" >> "$temp_file"
       fi
     done < "$mrna_file"
   fi
@@ -108,41 +98,23 @@ process_protein_file() {
       if [[ $line == ">"* ]]; then
         accession=$(echo "$line" | cut -d' ' -f1 | sed 's/>//')
         header=">${species}_${accession} ${line#*>}"
-        if [ "$REFSEQ_ONLY" = false ] || is_refseq_accession "$accession"; then
-          echo "${header}" >> "$temp_file"
-        fi
-        if [ "$REFSEQ_ONLY" = true ]; then
-          echo "${header}" >> "$temp_file"
-        fi
+        echo "${header}" >> "$temp_file"
       else
-        if [ "$REFSEQ_ONLY" = false ] || is_refseq_accession "$accession"; then
-          echo "$line" >> "$temp_file"
-        fi
-        if [ "$REFSEQ_ONLY" = true ]; then
-          echo "$line" >> "$temp_file"
-        fi
+        echo "$line" >> "$temp_file"
       fi
     done < "$protein_file"
   fi
 }
 
-# Function to remove duplicate headers and sequences
-remove_duplicates() {
-  local input_file="$1"
-  local output_file="$2"
-
-  awk '/^>/ { if (seen[$0]++) next } { print }' "$input_file" > "$output_file"
-}
-
 # Function to process files and concatenate sequences
 process_files() {
   echo "Initializing output files for concatenated sequences..."
-  > concatenated_mrna_refseq.fasta
-  > concatenated_protein_refseq.fasta
+  > concatenated_mrna.fasta
+  > concatenated_protein.fasta
 
   if [ "$REFSEQ_ONLY" = true ]; then
-    > concatenated_mrna.fasta
-    > concatenated_protein.fasta
+    > concatenated_mrna_refseq.fasta
+    > concatenated_protein_refseq.fasta
   fi
 
   export -f process_mrna_file
@@ -168,24 +140,23 @@ process_files() {
   wait
 
   echo "Concatenating temporary files..."
-  cat "${temp_dir}"/*_mrna.fasta >> concatenated_mrna_refseq.fasta
-  cat "${temp_dir}"/*_protein.fasta >> concatenated_protein_refseq.fasta
+  cat "${temp_dir}"/*_mrna.fasta >> concatenated_mrna.fasta
+  cat "${temp_dir}"/*_protein.fasta >> concatenated_protein.fasta
 
   if [ "$REFSEQ_ONLY" = true ]; then
-    cat "${temp_dir}"/*_mrna.fasta >> concatenated_mrna.fasta
-    cat "${temp_dir}"/*_protein.fasta >> concatenated_protein.fasta
+    echo "Filtering for RefSeq..."
+    awk '/^>/ {header = $0; if (seen[header]++) next} {print}' concatenated_mrna.fasta | awk '{if (/>/ && $1 ~ /^>.*_NP_|^>.*_XP_|^>.*_NR_|^>.*_XM_|^>.*_XR_|^>.*_AC_|^>.*_NC_|^>.*_NG_|^>.*_NM_|^>.*_NP_|^>.*_NR_|^>.*_NT_|^>.*_NW_|^>.*_NZ_|^>.*_NZ_|^>.*_NZ_|^>.*_NZ_|^>.*_NZ_|^>.*_NZ_/){print;getline;print}}' > concatenated_mrna_refseq.fasta
+    awk '/^>/ {header = $0; if (seen[header]++) next} {print}' concatenated_protein.fasta | awk '{if (/>/ && $1 ~ /^>.*_NP_|^>.*_XP_|^>.*_NR_|^>.*_XM_|^>.*_XR_|^>.*_AC_|^>.*_NC_|^>.*_NG_|^>.*_NM_|^>.*_NP_|^>.*_NR_|^>.*_NT_|^>.*_NW_|^>.*_NZ_|^>.*_NZ_|^>.*_NZ_|^>.*_NZ_|^>.*_NZ_|^>.*_NZ_/){print;getline;print}}' > concatenated_protein_refseq.fasta
   fi
 
   echo "Removing duplicates..."
-  remove_duplicates concatenated_mrna_refseq.fasta concatenated_mrna_refseq_unique.fasta
-  remove_duplicates concatenated_protein_refseq.fasta concatenated_protein_refseq_unique.fasta
+  remove_duplicates concatenated_mrna.fasta concatenated_mrna_unique.fasta
+  remove_duplicates concatenated_protein.fasta concatenated_protein_unique.fasta
 
   if [ "$REFSEQ_ONLY" = true ]; then
-    remove_duplicates concatenated_mrna.fasta concatenated_mrna_unique.fasta
-    remove_duplicates concatenated_protein.fasta concatenated_protein_unique.fasta
+    remove_duplicates concatenated_mrna_refseq.fasta concatenated_mrna_refseq_unique.fasta
+    remove_duplicates concatenated_protein_refseq.fasta concatenated_protein_refseq_unique.fasta
   fi
-
-  rm -rf "$temp_dir"
 }
 
 # Function to process files in parallel
@@ -200,27 +171,35 @@ process_files_parallel() {
   process_protein_file "$dir" "$accession" "$protein_file" "$temp_file_protein"
 }
 
+# Function to remove duplicate headers and sequences
+remove_duplicates() {
+  local input_file="$1"
+  local output_file="$2"
+
+  awk '/^>/ { if (seen[$0]++) next } { print }' "$input_file" > "$output_file"
+}
+
 # Function to create BLAST databases
 create_blast_databases() {
-  if [ -s concatenated_mrna_refseq_unique.fasta ]; then
+  if [ -s concatenated_mrna_unique.fasta ]; then
     echo "Creating BLAST database for mRNA..."
-    makeblastdb -in concatenated_mrna_refseq_unique.fasta -dbtype nucl -out mrna_blast_db_refseq -parse_seqids || { echo "BLAST database creation for mRNA failed"; exit 1; }
+    makeblastdb -in concatenated_mrna_unique.fasta -dbtype nucl -out mrna_blast_db -parse_seqids || { echo "BLAST database creation for mRNA failed"; exit 1; }
   fi
 
-  if [ -s concatenated_protein_refseq_unique.fasta ]; then
+  if [ -s concatenated_protein_unique.fasta ]; then
     echo "Creating BLAST database for proteins..."
-    makeblastdb -in concatenated_protein_refseq_unique.fasta -dbtype prot -out protein_blast_db_refseq -parse_seqids || { echo "BLAST database creation for proteins failed"; exit 1; }
+    makeblastdb -in concatenated_protein_unique.fasta -dbtype prot -out protein_blast_db -parse_seqids || { echo "BLAST database creation for proteins failed"; exit 1; }
   fi
 
   if [ "$REFSEQ_ONLY" = true ]; then
-    if [ -s concatenated_mrna_unique.fasta ]; then
-      echo "Creating BLAST database for unfiltered mRNA..."
-      makeblastdb -in concatenated_mrna_unique.fasta -dbtype nucl -out mrna_blast_db -parse_seqids || { echo "BLAST database creation for unfiltered mRNA failed"; exit 1; }
+    if [ -s concatenated_mrna_refseq_unique.fasta ]; then
+      echo "Creating BLAST database for RefSeq mRNA..."
+      makeblastdb -in concatenated_mrna_refseq_unique.fasta -dbtype nucl -out mrna_blast_db_refseq -parse_seqids || { echo "BLAST database creation for RefSeq mRNA failed"; exit 1; }
     fi
 
-    if [ -s concatenated_protein_unique.fasta ]; then
-      echo "Creating BLAST database for unfiltered proteins..."
-      makeblastdb -in concatenated_protein_unique.fasta -dbtype prot -out protein_blast_db -parse_seqids || { echo "BLAST database creation for unfiltered proteins failed"; exit 1; }
+    if [ -s concatenated_protein_refseq_unique.fasta ]; then
+      echo "Creating BLAST database for RefSeq proteins..."
+      makeblastdb -in concatenated_protein_refseq_unique.fasta -dbtype prot -out protein_blast_db_refseq -parse_seqids || { echo "BLAST database creation for RefSeq proteins failed"; exit 1; }
     fi
   fi
 }
@@ -230,6 +209,15 @@ main() {
   download_data
   process_files
   create_blast_databases
+
+  echo "Cleaning up temporary files..."
+  if [ -d "$temp_dir" ]; then
+    find "$temp_dir" -type f -delete
+    rmdir "$temp_dir"
+  else
+    echo "Error: Temporary directory $temp_dir not found."
+    exit 1
+  fi
 
   echo "Download and processing complete. The NCBI data for ${TAXON_NAME} with data types: ${DATA_TYPES}, including concatenated mRNA and protein files and BLAST databases, is available."
 }
