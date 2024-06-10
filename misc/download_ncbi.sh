@@ -2,6 +2,9 @@
 
 set -e  # Exit on any error
 
+# Set the number of cores to use - IMPORTANT
+NUM_CORES=24  # Adjust this number based on your system's capability
+
 if [ "$#" -lt 2 ]; then
   echo "Usage: $0 <taxon-name> <data-types> [--refseq]"
   echo "Example: $0 arthropoda genome protein rna --refseq"
@@ -20,8 +23,6 @@ fi
 
 DATA_TYPES=$(echo $@ | tr ' ' ',')
 
-# Set the number of cores to use
-NUM_CORES=24  # Adjust this number based on your system's capability
 
 # Function to download and hydrate RefSeq data
 download_data() {
