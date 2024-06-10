@@ -1,4 +1,6 @@
-download_ncbi.sh dependencies:
+To install download_ncbi.sh dependencies, save the following code block as install_deps.sh and execute: 
+chmod +x install_deps.sh
+./install_deps.sh
 
 
 ```bash
