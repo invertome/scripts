@@ -21,7 +21,7 @@ fi
 DATA_TYPES=$(echo $@ | tr ' ' ',')
 
 # Set the number of cores to use
-NUM_CORES=4  # Adjust this number based on your system's capability
+NUM_CORES=24  # Adjust this number based on your system's capability
 
 # Function to download and hydrate RefSeq data
 download_data() {
@@ -176,7 +176,7 @@ remove_duplicates() {
   local input_file="$1"
   local output_file="$2"
 
-  awk '/^>/ { if (seen[$0]++) next } { print }' "$input_file" > "$output_file"
+  awk '/^>/ {header = $0; seqid = gensub(/^>([^ ]+).*/, "\\1", "g", header); if (seen[seqid]++) next} { print }' "$input_file" > "$output_file"
 }
 
 # Function to create BLAST databases
@@ -224,3 +224,4 @@ main() {
 
 # Run the main function
 main
+
