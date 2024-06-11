@@ -1,7 +1,9 @@
-To install download_ncbi.sh dependencies, save the following code block as install_deps.sh and execute: 
+To install download_ncbi.sh dependencies with conda, save the following code block as install_deps.sh and execute: 
+
+```bash
 chmod +x install_deps.sh
 ./install_deps.sh
-
+```
 
 ```bash
 #!/bin/bash
