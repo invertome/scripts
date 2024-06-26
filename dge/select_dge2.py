@@ -7,15 +7,24 @@ import statsmodels.api as sm
 from statsmodels.stats.multicomp import MultiComparison
 from sklearn.decomposition import PCA
 import argparse
+import numpy as np
+import re
+
+# Function to sanitize transcript names
+def sanitize_name(name):
+    match = re.match(r'^>(\S+)', name)
+    return match.group(1) if match else name
 
 # Extract TPM values from the quant.sf files for the provided transcripts.
 def extract_tpm_from_files(transcripts, input_folder, metadata_df):
+    sanitized_transcripts = [sanitize_name(t) for t in transcripts]
     dfs = []
 
     for index, row in metadata_df.iterrows():
         path = os.path.join(input_folder, row['filename'], 'quant.sf')
         df = pd.read_csv(path, sep='\t', usecols=['Name', 'TPM'])
-        df = df[df['Name'].isin(transcripts)]
+        df['Name'] = df['Name'].apply(sanitize_name)  # Sanitize names in the quant.sf file
+        df = df[df['Name'].isin(sanitized_transcripts)]
         df.set_index('Name', inplace=True)
         df.columns = [row['SampleID']]
         dfs.append(df)
@@ -32,15 +41,33 @@ def plot_data(df, transcript, groups_to_compare, tukey_result, output_folder, pl
         # Extract numeric time values from stage names for continuous plotting
         df['Time'] = df['Stage'].apply(lambda x: int(x[1:]))
         plt.figure()
-        sns.lineplot(x='Time', y='TPM', data=df, marker='o', sort=True)
+        
+        # Calculate SEM for each group
+        sem = df.groupby('Time')['TPM'].sem().reset_index()
+        
+        ax = sns.lineplot(x='Time', y='TPM', data=df, marker='o', sort=True, errorbar=None)
+        for idx, row in sem.iterrows():
+            plt.errorbar(row['Time'], df[df['Time'] == row['Time']]['TPM'].mean(), yerr=row['TPM'], fmt='o', color='black')
+        
         plt.title(transcript)
         plt.xlabel('Day')
         plt.ylabel('TPM')
+
+        # Customize x-axis
+        ax.set_xticks(sorted(df['Time'].unique()))
+        ax.set_xticklabels(sorted(df['Time'].unique()))
     else:
         plt.figure()
-        ax = sns.barplot(x='Stage', y='TPM', data=df, order=groups_to_compare)  # Plot in order of groups_to_compare
+        
+        # Calculate mean and SEM for each group
+        group_means = df.groupby('Stage')['TPM'].mean().reindex(groups_to_compare)
+        group_sem = df.groupby('Stage')['TPM'].sem().reindex(groups_to_compare)
+        
+        ax = sns.barplot(x='Stage', y='TPM', data=df, order=groups_to_compare, errorbar=None)  # Plot in order of groups_to_compare
+        ax.errorbar(range(len(group_means)), group_means, yerr=group_sem, fmt='none', c='black', capsize=5)
+        
         plt.title(transcript)
-
+        
         # Annotating significance based on Tukey's post-hoc test
         for i, group in enumerate(groups_to_compare):
             if tukey_result.reject[i]:
@@ -86,13 +113,20 @@ def main(metadata_file, transcripts_file, groups_file, input_folder, output_fold
     metadata = metadata[metadata['Stage'].isin(groups_to_compare)]
     tpm_matrix = extract_tpm_from_files(transcripts, input_folder, metadata)
 
-    for transcript in transcripts:
-        df_transcript = tpm_matrix.loc[transcript].reset_index()
-        df_transcript.columns = ['SampleID', 'TPM']
-        df_transcript = df_transcript.merge(metadata, on='SampleID', how='left')
-        
-        tukey_result = perform_anova(df_transcript, transcript, output_folder)
-        plot_data(df_transcript, transcript, groups_to_compare, tukey_result, output_folder, plot_type)
+    sanitized_transcripts = [sanitize_name(t) for t in transcripts]
+    
+    for transcript in sanitized_transcripts:
+        print(f"Processing transcript: {transcript}")
+        try:
+            df_transcript = tpm_matrix.loc[transcript].reset_index()
+            df_transcript.columns = ['SampleID', 'TPM']
+            df_transcript = df_transcript.merge(metadata, on='SampleID', how='left')
+            
+            tukey_result = perform_anova(df_transcript, transcript, output_folder)
+            plot_data(df_transcript, transcript, groups_to_compare, tukey_result, output_folder, plot_type)
+        except KeyError as e:
+            print(f"KeyError: {e} - Transcript not found in TPM matrix.")
+            continue
         
     if len(transcripts) > 3:
         perform_pca(tpm_matrix.T, output_folder)
