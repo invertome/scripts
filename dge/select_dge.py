@@ -31,7 +31,7 @@ def extract_tpm_from_files(transcripts, input_folder, metadata_df):
     return pd.concat(dfs, axis=1)
 
 # Plotting function for each transcript using seaborn for better aesthetics.
-def plot_data(df, transcript, groups_to_compare, tukey_result, output_folder, plot_type='bar'):
+def plot_data(df, transcript, groups_to_compare, tukey_result, output_folder, plot_type='bar', y_limit=None):
     # Set a base color for the plots
     base_color = '#1f77b4'  # This is a blue color similar to the default Seaborn color palette
 
@@ -53,6 +53,8 @@ def plot_data(df, transcript, groups_to_compare, tukey_result, output_folder, pl
         plt.title(transcript)
         plt.xlabel('Day')
         plt.ylabel('TPM')
+        if y_limit:
+            ax.set_ylim(0, y_limit)
 
         # Customize x-axis
         ax.set_xticks(sorted(df['Time'].unique()))
@@ -75,6 +77,8 @@ def plot_data(df, transcript, groups_to_compare, tukey_result, output_folder, pl
         plt.title(transcript)
         plt.xlabel('Stage')
         plt.ylabel('TPM')
+        if y_limit:
+            ax.set_ylim(0, y_limit)
 
     # Save the plot in both PNG and PDF formats
     for fmt in ['png', 'pdf']:
@@ -109,7 +113,7 @@ def perform_pca(df, metadata, output_folder):
     plt.close()
 
 # Main function that performs the entire workflow.
-def main(metadata_file, transcripts_file, groups_file, input_folder, output_folder, plot_type='bar'):
+def main(metadata_file, transcripts_file, groups_file, input_folder, output_folder, plot_type='bar', y_limit=None):
     metadata = pd.read_csv(metadata_file)
     transcripts = pd.read_csv(transcripts_file, header=None).iloc[:,0].tolist()
     groups_to_compare = pd.read_csv(groups_file, header=None).iloc[:,0].tolist()
@@ -127,7 +131,7 @@ def main(metadata_file, transcripts_file, groups_file, input_folder, output_fold
             df_transcript = df_transcript.merge(metadata, on='SampleID', how='left')
             
             tukey_result = perform_anova(df_transcript, transcript, output_folder)
-            plot_data(df_transcript, transcript, groups_to_compare, tukey_result, output_folder, plot_type)
+            plot_data(df_transcript, transcript, groups_to_compare, tukey_result, output_folder, plot_type, y_limit)
         except KeyError as e:
             print(f"KeyError: {e} - Transcript not found in TPM matrix.")
             continue
@@ -143,6 +147,7 @@ if __name__ == "__main__":
     parser.add_argument('-i', '--input_folder', type=str, required=True, help='Path to the input folder.')
     parser.add_argument('-o', '--output_folder', type=str, required=True, help='Path to the output folder.')
     parser.add_argument('-p', '--plot_type', type=str, choices=['bar', 'line'], default='bar', help='Type of plot to create (default: bar).')
-    
+    parser.add_argument('-y', '--y_limit', type=float, help='Y-axis limit for the plots.')
+
     args = parser.parse_args()
-    main(args.metadata_file, args.transcripts_file, args.groups_file, args.input_folder, args.output_folder, args.plot_type)
+    main(args.metadata_file, args.transcripts_file, args.groups_file, args.input_folder, args.output_folder, args.plot_type, args.y_limit)
