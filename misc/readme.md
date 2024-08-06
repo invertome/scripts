@@ -36,7 +36,7 @@ conda create -n ncbi_processing_env -y
 source activate ncbi_processing_env
 
 # Install necessary dependencies
-conda install -c bioconda datasets-cli jq parallel blast -y
+conda install -c bioconda ncbi-datasets-cli jq parallel blast -y
 
 echo "All dependencies have been installed in the 'ncbi_processing_env' environment."
 
