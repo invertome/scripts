@@ -48,23 +48,20 @@ def main():
     run_command(['makeblastdb', '-in', args.genome_fasta, '-dbtype', 'nucl', '-out', db_name])
 
     # Perform BLAST search using subprocess
-    blast_outputs = []
-    for mrna in mrna_sequences:
-        output_file = os.path.join(args.output_dir, f"{mrna.id}_blast.xml")
-        blastn_cline = [
-            'blastn',
-            '-query', mrna.id,
-            '-db', db_name,
-            '-out', output_file,
-            '-outfmt', '5',  # XML output
-            '-evalue', str(args.evalue),
-            '-num_threads', str(args.threads)
-        ]
-        run_command(blastn_cline)
-        blast_outputs.append(output_file)
+    output_file = os.path.join(args.output_dir, f"blast_results.xml")
+    blastn_cline = [
+        'blastn',
+        '-query', args.mrna_fasta,  # Use the input file name directly
+        '-db', db_name,
+        '-out', output_file,
+        '-outfmt', '5',  # XML output
+        '-evalue', str(args.evalue),
+        '-num_threads', str(args.threads)
+    ]
+    run_command(blastn_cline)
 
     # Extract upstream sequences
-    extracted_sequences = pipeline_utils.extract_upstream_sequences(blast_outputs, genome_sequences, args.upstream_length)
+    extracted_sequences = pipeline_utils.extract_upstream_sequences([output_file], genome_sequences, args.upstream_length)
     output_fasta_file = os.path.join(args.output_dir, "extracted_sequences.fasta")
     pipeline_utils.output_fasta(extracted_sequences, output_fasta_file)
 
@@ -72,6 +69,6 @@ def main():
     if args.promoter:
         promoter_output_file = os.path.join(args.output_dir, "promoter_predictions.txt")
         pipeline_utils.predict_promoters(output_fasta_file, promoter_output_file)
-    
+
 if __name__ == "__main__":
     main()
