@@ -4,7 +4,6 @@ import os
 import subprocess
 from Bio import SeqIO
 from Bio.Blast import NCBIXML
-import pipeline_utils
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -12,6 +11,16 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 def run_command(command):
     logging.info(f"Running command: {' '.join(command)}")
     subprocess.run(command, check=True)
+
+def parse_input_files(mrna_fasta, genome_fasta):
+    """Parse mRNA and genome FASTA files."""
+    try:
+        mrna_sequences = list(SeqIO.parse(mrna_fasta, "fasta"))
+        genome_sequences = list(SeqIO.parse(genome_fasta, "fasta"))
+        return mrna_sequences, genome_sequences
+    except Exception as e:
+        logging.error(f"Error parsing FASTA files: {e}")
+        raise
 
 def main():
     parser = argparse.ArgumentParser(description="Pipeline for extracting gene regions, upstream sequences, and promoter prediction.")
@@ -27,12 +36,9 @@ def main():
     # Create output directory if it does not exist
     os.makedirs(args.output_dir, exist_ok=True)
 
-    # Ensure the utility functions exist
+    # Parse input files
     try:
-        mrna_sequences, genome_sequences = pipeline_utils.parse_input_files(args.mrna_fasta, args.genome_fasta)
-    except AttributeError:
-        logging.error(f"Function 'parse_input_files' not found in 'pipeline_utils'.")
-        return
+        mrna_sequences, genome_sequences = parse_input_files(args.mrna_fasta, args.genome_fasta)
     except FileNotFoundError as e:
         logging.error(f"File not found: {e}")
         return
@@ -47,7 +53,7 @@ def main():
         output_file = os.path.join(args.output_dir, f"{mrna.id}_blast.xml")
         blastn_cline = [
             'blastn',
-            '-query', mrna,
+            '-query', mrna.id,
             '-db', db_name,
             '-out', output_file,
             '-outfmt', '5',  # XML output
@@ -64,8 +70,4 @@ def main():
 
     # Perform promoter prediction if required
     if args.promoter:
-        promoter_output_file = os.path.join(args.output_dir, "promoter_predictions.txt")
-        pipeline_utils.predict_promoters(output_fasta_file, promoter_output_file)
-
-if __name__ == "__main__":
-    main()
+        promoter_output_file = os.path.join(args.output_dir, "promoter_predictions
