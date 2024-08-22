@@ -2,26 +2,12 @@ import argparse
 import logging
 import os
 import subprocess
-import pipeline_utils
 from Bio import SeqIO
 from Bio.Blast import NCBIXML
+import pipeline_utils
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-def run_command(command):
-    logging.info(f"Running command: {' '.join(command)}")
-    subprocess.run(command, check=True)
-
-def parse_input_files(mrna_fasta, genome_fasta):
-    """Parse mRNA and genome FASTA files."""
-    try:
-        mrna_sequences = list(SeqIO.parse(mrna_fasta, "fasta"))
-        genome_sequences = list(SeqIO.parse(genome_fasta, "fasta"))
-        return mrna_sequences, genome_sequences
-    except Exception as e:
-        logging.error(f"Error parsing FASTA files: {e}")
-        raise
 
 def main():
     parser = argparse.ArgumentParser(description="Pipeline for extracting gene regions, upstream sequences, and promoter prediction.")
@@ -39,30 +25,23 @@ def main():
 
     # Parse input files
     try:
-        mrna_sequences, genome_sequences = parse_input_files(args.mrna_fasta, args.genome_fasta)
+        mrna_sequences, genome_sequences = pipeline_utils.parse_input_files(args.mrna_fasta, args.genome_fasta)
     except FileNotFoundError as e:
         logging.error(f"File not found: {e}")
         return
 
     # Create BLAST database using subprocess
-    db_name = os.path.splitext(args.genome_fasta)[0]
-    run_command(['makeblastdb', '-in', args.genome_fasta, '-dbtype', 'nucl', '-out', db_name])
+    genome_db = pipeline_utils.create_blast_database(args.genome_fasta)
 
     # Perform BLAST search using subprocess
-    output_file = os.path.join(args.output_dir, f"blast_results.xml")
-    blastn_cline = [
-        'blastn',
-        '-query', args.mrna_fasta,  # Use the input file name directly
-        '-db', db_name,
-        '-out', output_file,
-        '-outfmt', '5',  # XML output
-        '-evalue', str(args.evalue),
-        '-num_threads', str(args.threads)
-    ]
-    run_command(blastn_cline)
+    blast_output_file = pipeline_utils.perform_blast_search(args.mrna_fasta, genome_db, args.evalue, args.threads, args.output_dir)
+
+    # Parse BLAST output
+    with open(blast_output_file) as blast_output_handle:
+        blast_records = list(NCBIXML.parse(blast_output_handle))
 
     # Extract upstream sequences
-    extracted_sequences = pipeline_utils.extract_upstream_sequences([output_file], genome_sequences, args.upstream_length)
+    extracted_sequences = pipeline_utils.extract_upstream_sequences(blast_records, genome_sequences, args.upstream_length)
     output_fasta_file = os.path.join(args.output_dir, "extracted_sequences.fasta")
     pipeline_utils.output_fasta(extracted_sequences, output_fasta_file)
 
