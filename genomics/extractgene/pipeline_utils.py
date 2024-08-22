@@ -1,67 +1,34 @@
 import os
 from Bio import SeqIO
-from Bio.Blast.Applications import NcbiblastnCommandline, NcbimakeblastdbCommandline
 from Bio.Blast import NCBIXML
 import subprocess
 import logging
-from pathlib import Path
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def parse_input_files(mrna_fasta, genome_fasta):
-    """
-    Read and parse input files using Biopython's SeqIO.parse.
-    """
     mrna_sequences = list(SeqIO.parse(mrna_fasta, "fasta"))
     genome_sequences = SeqIO.to_dict(SeqIO.parse(genome_fasta, "fasta"))
-
     return mrna_sequences, genome_sequences
 
-    
 def create_blast_database(genome_fasta):
-    """
-    Create a BLAST database from a genome FASTA file using NcbimakeblastdbCommandline.
-    """
-    # Set database name
     db_name = os.path.splitext(genome_fasta)[0]
-
-    # Create the BLAST database
-    makeblastdb_cline = NcbimakeblastdbCommandline(dbtype="nucl", input_file=genome_fasta, out=db_name)
-    makeblastdb_cline()
-
+    makeblastdb_cline = ['makeblastdb', '-in', genome_fasta, '-dbtype', 'nucl', '-out', db_name]
+    subprocess.run(makeblastdb_cline, check=True)
     return db_name
 
-def perform_blast_search(mrna, genome_db, evalue, threads):
-    """
-    Perform BLAST search using NcbiblastnCommandline.
-    """
-    # Create a temporary FASTA file for the current mRNA sequence
-    temp_mrna_fasta = f"{genome_db}_temp.fasta"
-    SeqIO.write(mrna, temp_mrna_fasta, "fasta")
+def perform_blast_search(mrna_fasta, genome_db, evalue, threads, output_dir):
+    blast_output_file = os.path.join(output_dir, "blast_results.xml")
+    blastn_cline = [
+        'blastn', '-query', mrna_fasta, '-db', genome_db, '-out', blast_output_file,
+        '-outfmt', '5', '-evalue', str(evalue), '-num_threads', str(threads)
+    ]
+    subprocess.run(blastn_cline, check=True)
+    return blast_output_file
 
-    # Temporary output file
-    blast_output_file = f"{genome_db}_blast.xml"
-    
-    # Perform the BLAST search
-    blastn_cline = NcbiblastnCommandline(query=temp_mrna_fasta, db=genome_db, evalue=evalue, outfmt=5, out=blast_output_file, num_threads=threads)
-    blastn_cline()
-
-    # Parse the BLAST output
-    with open(blast_output_file) as blast_output_handle:
-        blast_record = NCBIXML.read(blast_output_handle)
-
-    # Clean up temporary files
-    os.remove(temp_mrna_fasta)
-    os.remove(blast_output_file)
-
-    return blast_record
-
-
-
-def extract_upstream_sequences(blast_outputs, genome_sequences, upstream_length):
+def extract_upstream_sequences(blast_records, genome_sequences, upstream_length):
     extracted_sequences = []
-
-    for i, blast_record in enumerate(blast_outputs):
+    for blast_record in blast_records:
         if blast_record.alignments:
             alignment = blast_record.alignments[0]  # only take top alignment
             if alignment.hsps:
@@ -73,7 +40,6 @@ def extract_upstream_sequences(blast_outputs, genome_sequences, upstream_length)
                     continue
 
                 ref_seq = genome_sequences[reference_id]
-
                 start = hsp.sbjct_start - upstream_length
                 end = hsp.sbjct_start - 1
 
@@ -82,27 +48,19 @@ def extract_upstream_sequences(blast_outputs, genome_sequences, upstream_length)
 
                 if start < end and end <= len(ref_seq):  # check coordinates are valid
                     extracted_seq = ref_seq.seq[start - 1:end]
-                    logging.info(f"Extracted sequence for {blast_record.query}: {extracted_seq}")  # Debug print statement
+                    logging.info(f"Extracted sequence for {blast_record.query}: {extracted_seq}")
                     extracted_sequences.append((blast_record.query, extracted_seq))  # Keep original ID
                 else:
                     logging.error(f"Invalid coordinates for {blast_record.query}: start={start}, end={end}, len={len(ref_seq)}")
         else:
-            logging.warning(f"No alignments found for {blast_record.query}")  # Debug print statement
-
+            logging.warning(f"No alignments found for {blast_record.query}")
     return extracted_sequences
-
-
-
 
 def output_fasta(sequences, output_file):
     with open(output_file, "w") as output_handle:
         for i, (original_id, seq) in enumerate(sequences):
-            output_handle.write(f">{original_id}_seq_{i}\n{seq}\n")  # Include original ID in header
+            output_handle.write(f">{original_id}_seq_{i}\n{seq}\n")
 
 def predict_promoters(input_fasta_file, output_file):
-    """
-    Run promoter prediction using the Promoter2.0 tool.
-    """
     promoter_cline = ["promoter2", input_fasta_file, output_file]
     subprocess.run(promoter_cline, check=True)
-
