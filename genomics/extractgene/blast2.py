@@ -2,6 +2,7 @@ import argparse
 import logging
 import os
 import subprocess
+import pipeline_utils
 from Bio import SeqIO
 from Bio.Blast import NCBIXML
 
