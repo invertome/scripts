@@ -70,8 +70,8 @@ def main():
 
     # Perform promoter prediction if required
     if args.promoter:
-    promoter_output_file = os.path.join(args.output_dir, "promoter_predictions.txt")
-    pipeline_utils.predict_promoters(output_fasta_file, promoter_output_file)
+        promoter_output_file = os.path.join(args.output_dir, "promoter_predictions.txt")
+        pipeline_utils.predict_promoters(output_fasta_file, promoter_output_file)
     
 if __name__ == "__main__":
     main()
