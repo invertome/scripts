@@ -30,18 +30,26 @@ def extract_upstream_sequences(blast_records, genome_sequences, upstream_length)
     extracted_sequences = []
     for blast_record in blast_records:
         if blast_record.alignments:
-            alignment = blast_record.alignments[0]  # only take top alignment
-            if alignment.hsps:
-                hsp = alignment.hsps[0]  # only take top hsp
-                reference_id = alignment.hit_def.split()[0]  # split at the first whitespace
+            first_hsp = None
+            first_hsp_start = None
+            alignment_id = None
+            
+            # Loop through all alignments and find the first HSP (by start position)
+            for alignment in blast_record.alignments:
+                for hsp in alignment.hsps:
+                    if first_hsp is None or hsp.sbjct_start < first_hsp_start:
+                        first_hsp = hsp
+                        first_hsp_start = hsp.sbjct_start
+                        alignment_id = alignment.hit_def.split()[0]  # Extract the reference ID
 
-                if reference_id not in genome_sequences:
-                    logging.error(f"Reference {reference_id} not found in genome sequences.")
+            if first_hsp and alignment_id:
+                if alignment_id not in genome_sequences:
+                    logging.error(f"Reference {alignment_id} not found in genome sequences.")
                     continue
 
-                ref_seq = genome_sequences[reference_id]
-                start = hsp.sbjct_start - upstream_length
-                end = hsp.sbjct_start - 1
+                ref_seq = genome_sequences[alignment_id]
+                start = first_hsp.sbjct_start - upstream_length
+                end = first_hsp.sbjct_start - 1
 
                 if start < 1:
                     start = 1
@@ -55,6 +63,7 @@ def extract_upstream_sequences(blast_records, genome_sequences, upstream_length)
         else:
             logging.warning(f"No alignments found for {blast_record.query}")
     return extracted_sequences
+
 
 def output_fasta(sequences, output_file):
     with open(output_file, "w") as output_handle:
