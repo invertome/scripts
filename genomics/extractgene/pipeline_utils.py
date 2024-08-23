@@ -43,7 +43,7 @@ def create_hisat2_index(genome_fasta):
 def perform_hisat2_mapping(mrna_fasta, genome_index, threads, output_dir, score_min="L,0,-4", pen_noncansplice=3):
     sam_output_file = os.path.join(output_dir, "hisat2_results.sam")
     hisat2_cline = [
-        'hisat2', '-f', '-x', genome_index, '-U', mrna_fasta, '-S', sam_output_file,
+        'hisat2', '-f', '-x', genome_index, '-U', mrna_fasta, '-S', sam_output_file, '-N 2',
         '--threads', str(threads),
         '--score-min', score_min,
         '--pen-noncansplice', str(pen_noncansplice)
