@@ -16,10 +16,10 @@ def main():
     parser.add_argument("-u", "--upstream_length", type=int, required=True, help="Length of nucleotides upstream of the start codon.")
     parser.add_argument("-o", "--output_dir", default=".", help="Output directory for the resulting FASTA file.")
     parser.add_argument("-t", "--threads", type=int, default=1, help="Number of threads to use for parallel processing.")
-    parser.add_argument("-e", "--evalue", type=float, default=0.001, help="E-value threshold for BLAST search (ignored if using HISAT2).")
+    parser.add_argument("-e", "--evalue", type=float, default=0.0001, help="E-value threshold for BLAST search (ignored if using HISAT2).")
     parser.add_argument("-p", "--promoter", action='store_true', help="Run promoter prediction on the extracted sequences.")
     parser.add_argument("--aligner", choices=["blast", "hisat2"], default="blast", help="Choose the aligner to use (blast or hisat2).")
-    parser.add_argument("--score-min", default="L,0,-4", help="Minimum alignment score (for HISAT2). Default: L,0,-4")
+    parser.add_argument("--score-min", default="L,0,-2", help="Minimum alignment score (for HISAT2). Default: L,0,-4")
     parser.add_argument("--pen-noncansplice", type=int, default=3, help="Penalty for non-canonical splice sites (for HISAT2). Default: 3")
     args = parser.parse_args()
 
