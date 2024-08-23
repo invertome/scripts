@@ -26,47 +26,18 @@ def perform_blast_search(mrna_fasta, genome_db, evalue, threads, output_dir):
     subprocess.run(blastn_cline, check=True)
     return blast_output_file
 
-def extract_upstream_sequences_blast(blast_records, genome_sequences, upstream_length):
-    extracted_sequences = []
-    for blast_record in blast_records:
-        if blast_record.alignments:
-            first_hsp = None
-            first_hsp_start = None
-            alignment_id = None
-            
-            for alignment in blast_record.alignments:
-                for hsp in alignment.hsps:
-                    if first_hsp is None or hsp.sbjct_start < first_hsp_start:
-                        first_hsp = hsp
-                        first_hsp_start = hsp.sbjct_start
-                        alignment_id = alignment.hit_def.split()[0]
-
-            if first_hsp and alignment_id:
-                if alignment_id not in genome_sequences:
-                    logging.error(f"Reference {alignment_id} not found in genome sequences.")
-                    continue
-
-                ref_seq = genome_sequences[alignment_id]
-                start = first_hsp.sbjct_start - upstream_length
-                end = first_hsp.sbjct_start - 1
-
-                if start < 1:
-                    start = 1
-
-                if start < end and end <= len(ref_seq):
-                    extracted_seq = ref_seq.seq[start - 1:end]
-                    logging.info(f"Extracted sequence for {blast_record.query}: {extracted_seq}")
-                    extracted_sequences.append((blast_record.query, extracted_seq))
-                else:
-                    logging.error(f"Invalid coordinates for {blast_record.query}: start={start}, end={end}, len={len(ref_seq)}")
-        else:
-            logging.warning(f"No alignments found for {blast_record.query}")
-    return extracted_sequences
-
 def create_hisat2_index(genome_fasta):
     index_base = os.path.splitext(genome_fasta)[0]
-    hisat2_build_cline = ['hisat2-build', genome_fasta, index_base]
-    subprocess.run(hisat2_build_cline, check=True)
+    index_files = [f"{index_base}.{i}.ht2" for i in range(1, 9)]
+
+    # Check if index files already exist
+    if all(os.path.exists(f) for f in index_files):
+        logging.info(f"HISAT2 index files already exist for {genome_fasta}. Skipping index creation.")
+    else:
+        logging.info(f"Creating HISAT2 index for {genome_fasta}.")
+        hisat2_build_cline = ['hisat2-build', genome_fasta, index_base]
+        subprocess.run(hisat2_build_cline, check=True)
+    
     return index_base
 
 def perform_hisat2_mapping(mrna_fasta, genome_index, threads, output_dir, score_min="L,0,-4", pen_noncansplice=3):
@@ -79,7 +50,6 @@ def perform_hisat2_mapping(mrna_fasta, genome_index, threads, output_dir, score_
     ]
     subprocess.run(hisat2_cline, check=True)
     return sam_output_file
-
 
 def extract_upstream_sequences_hisat2(sam_file, genome_sequences, upstream_length):
     extracted_sequences = []
