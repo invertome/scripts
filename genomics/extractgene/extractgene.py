@@ -21,6 +21,8 @@ def main():
     parser.add_argument("--aligner", choices=["blast", "hisat2"], default="blast", help="Choose the aligner to use (blast or hisat2).")
     parser.add_argument("--score-min", default="L,0,-2", help="Minimum alignment score (for HISAT2). Default: L,0,-4")
     parser.add_argument("--pen-noncansplice", type=int, default=3, help="Penalty for non-canonical splice sites (for HISAT2). Default: 3")
+    parser.add_argument("-G", "--extract_gene", action='store_true', help="Extract the entire gene and output to a separate file.")
+    parser.add_argument("-D", "--draw_structure", action='store_true', help="Draw the intron/exon structure and save as PDF.")
     args = parser.parse_args()
 
     # Create output directory if it does not exist
@@ -59,6 +61,17 @@ def main():
 
         # Extract upstream sequences using HISAT2 results
         extracted_sequences = pipeline_utils.extract_upstream_sequences_hisat2(sam_output_file, genome_sequences, args.upstream_length)
+
+        if args.extract_gene or args.draw_structure:
+            gene_sequences = pipeline_utils.extract_entire_gene(sam_output_file, genome_sequences)
+
+            if args.extract_gene:
+                gene_fasta_file = os.path.join(args.output_dir, "entire_genes.fasta")
+                pipeline_utils.output_gene_fasta(gene_sequences, gene_fasta_file)
+
+            if args.draw_structure:
+                diagram_pdf = os.path.join(args.output_dir, "gene_structure.pdf")
+                pipeline_utils.draw_intron_exon_structure(gene_sequences, diagram_pdf)
 
     # Output the extracted sequences to a FASTA file
     output_fasta_file = os.path.join(args.output_dir, "extracted_sequences.fasta")
