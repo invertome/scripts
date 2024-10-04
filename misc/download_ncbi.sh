@@ -3,7 +3,7 @@
 set -e  # Exit on any error
 
 # Set the number of cores to use - IMPORTANT
-NUM_CORES=24  # Adjust this number based on your system's capability
+NUM_CORES=16  # Adjust this number based on your system's capability
 
 if [ "$#" -lt 2 ]; then
   echo "Usage: $0 <taxon-name> <data-types> [--refseq]"
