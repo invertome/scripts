@@ -29,20 +29,34 @@ def fetch_suppressed_replacement(accession, db_type="protein"):
     print(f"No replacement accession found for {accession}.")
     return None
 
+def resolve_to_accession(gi_id, db_type="nucleotide"):
+    """Resolve a GI number to a proper accession number."""
+    try:
+        summary = validate_accession(gi_id, db_type)
+        if summary:
+            for item in summary:
+                if "AccessionVersion" in item:
+                    return item["AccessionVersion"]
+    except Exception as e:
+        print(f"Error resolving GI number {gi_id} to accession: {e}")
+    return gi_id  # Fallback to original GI ID if resolution fails
+
 def fetch_cross_references(accession, from_db, to_db):
-    """Find linked accession using Entrez elink API."""
+    """Find linked accession using Entrez elink API and resolve GI numbers if necessary."""
     try:
         handle = Entrez.elink(dbfrom=from_db, db=to_db, id=accession)
         records = Entrez.read(handle)
         handle.close()
 
-        # Extract linked accessions
+        # Extract linked accessions and resolve GI numbers to accessions
         cross_refs = []
         for record in records:
             if "LinkSetDb" in record:
                 for linkset in record["LinkSetDb"]:
                     for link in linkset["Link"]:
-                        cross_refs.append(link["Id"])
+                        linked_id = link["Id"]
+                        resolved_id = resolve_to_accession(linked_id, db_type=to_db)
+                        cross_refs.append(resolved_id)
         return cross_refs
     except Exception as e:
         print(f"Error linking '{accession}' from '{from_db}' to '{to_db}': {e}")
