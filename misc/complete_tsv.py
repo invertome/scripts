@@ -159,7 +159,7 @@ def process_tsv(input_file, output_file):
                 writer.writerow({key: row[key] for key in fieldnames})
 
 def main():
-    parser = argparse.ArgumentParser(description="Complete a TSV file with missing accession FASTA data.")
+    parser = argparse.ArgumentParser(description="Complete a TSV file with missing accession & FASTA data.")
     parser.add_argument("-i", "--input", required=True, help="Input TSV file")
     parser.add_argument("-o", "--output", required=True, help="Output TSV file")
     args = parser.parse_args()
