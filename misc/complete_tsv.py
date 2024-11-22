@@ -48,35 +48,73 @@ def fetch_cross_references(accession, from_db, to_db):
         print(f"Error linking '{accession}' from '{from_db}' to '{to_db}': {e}")
         return []
 
-def resolve_missing_ids(row):
-    """Find and populate missing IDs using cross-references."""
-    db_mappings = {
-        "Protein_Accession": ("protein", [("nucleotide", "Gene_Accession"), ("nucleotide", "mRNA_Accession")]),
-        "Gene_Accession": ("nucleotide", [("protein", "Protein_Accession"), ("nucleotide", "mRNA_Accession")]),
-        "mRNA_Accession": ("nucleotide", [("protein", "Protein_Accession"), ("nucleotide", "Gene_Accession")]),
-    }
-
-    for current_field, (db_from, targets) in db_mappings.items():
-        accession = row.get(current_field)
-        if accession:  # Proceed only if the current field has an accession
-            for db_to, target_field in targets:
-                if not row.get(target_field):  # Populate only if target field is missing
-                    cross_refs = fetch_cross_references(accession, db_from, db_to)
-                    if cross_refs:
-                        row[target_field] = cross_refs[0]  # Use the first linked accession
-                        print(f"Resolved {target_field} from {current_field} using accession {accession}.")
-                    else:
-                        print(f"No cross-references found for {current_field} ({accession}) in {db_to}.")
-
 def fetch_fasta(accession, db_type="nucleotide"):
-    """Fetch the FASTA sequence for an accession."""
+    """Fetch the FASTA sequence for an accession, targeting a specific sub-region."""
+    try:
+        # Fetch metadata to determine specific CDS or gene region
+        handle = Entrez.esummary(db=db_type, id=accession, retmode="xml")
+        summary = Entrez.read(handle)
+        handle.close()
+
+        # Locate region and fetch it
+        for item in summary:
+            if "Location" in item and "Summary" in item:
+                location = item.get("Location", "")
+                start, end = parse_location(location)
+                if start and end:
+                    print(f"Fetching specific region {start}-{end} for {accession}.")
+                    return fetch_region_sequence(accession, start, end, db_type)
+
+        # Fallback: If no specific region found, fetch full sequence and check its length
+        print(f"No specific region found for {accession}. Fetching full sequence.")
+        full_sequence = fetch_full_sequence(accession, db_type)
+        if full_sequence and len(full_sequence.split("\n", 1)[1].replace("\n", "")) > 10000:
+            # Omit if sequence is longer than 10,000 bp
+            print(f"Sequence for {accession} is too long. Omitting.")
+            return None
+        return full_sequence
+
+    except Exception as e:
+        print(f"Error fetching FASTA for accession {accession}: {e}")
+        return None
+
+def parse_location(location):
+    """Parse location information from summary."""
+    try:
+        # Example location: "2398..3399"
+        start, end = map(int, location.split(".."))
+        return start, end
+    except Exception as e:
+        print(f"Error parsing location: {e}")
+        return None, None
+
+def fetch_region_sequence(accession, start, end, db_type):
+    """Fetch a specific region of a sequence using coordinates."""
+    try:
+        handle = Entrez.efetch(
+            db=db_type,
+            id=accession,
+            seq_start=start,
+            seq_stop=end,
+            rettype="fasta",
+            retmode="text",
+        )
+        fasta = handle.read()
+        handle.close()
+        return fasta
+    except Exception as e:
+        print(f"Error fetching region {start}-{end} for accession {accession}: {e}")
+        return None
+
+def fetch_full_sequence(accession, db_type):
+    """Fetch the full FASTA sequence."""
     try:
         handle = Entrez.efetch(db=db_type, id=accession, rettype="fasta", retmode="text")
         fasta = handle.read()
         handle.close()
         return fasta
     except Exception as e:
-        print(f"Error fetching FASTA for accession {accession}: {e}")
+        print(f"Error fetching full FASTA for accession {accession}: {e}")
         return None
 
 def construct_fasta_header(species, gene_name, alt_gene_name):
@@ -102,9 +140,30 @@ def fetch_and_add_missing_data(row, field, species, gene_name, alt_gene_name):
             header = construct_fasta_header(species, gene_name, alt_gene_name)
             row[f"{field}_FASTA"] = header + "".join(fasta.split("\n")[1:])
         else:
-            print(f"Error fetching FASTA for {field} accession {accession}")
+            row[f"{field}_FASTA"] = f"NOTE: Sequence omitted for accession {accession} (too long or no region found)"
+            print(f"Sequence omitted for {field} accession {accession}")
     else:
         print(f"No accession provided for {field}.")
+
+def resolve_missing_ids(row):
+    """Find and populate missing IDs using cross-references."""
+    db_mappings = {
+        "Protein_Accession": ("protein", [("nucleotide", "Gene_Accession"), ("nucleotide", "mRNA_Accession")]),
+        "Gene_Accession": ("nucleotide", [("protein", "Protein_Accession"), ("nucleotide", "mRNA_Accession")]),
+        "mRNA_Accession": ("nucleotide", [("protein", "Protein_Accession"), ("nucleotide", "Gene_Accession")]),
+    }
+
+    for current_field, (db_from, targets) in db_mappings.items():
+        accession = row.get(current_field)
+        if accession:  # Proceed only if the current field has an accession
+            for db_to, target_field in targets:
+                if not row.get(target_field):  # Populate only if target field is missing
+                    cross_refs = fetch_cross_references(accession, db_from, db_to)
+                    if cross_refs:
+                        row[target_field] = cross_refs[0]  # Use the first linked accession
+                        print(f"Resolved {target_field} from {current_field} using accession {accession}.")
+                    else:
+                        print(f"No cross-references found for {current_field} ({accession}) in {db_to}.")
 
 def process_tsv(input_file, output_file):
     """Process the TSV file."""
