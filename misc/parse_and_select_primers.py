@@ -13,7 +13,7 @@ Workflow:
 2.  Pre-computes primer stats. It uses a robust, two-tiered approach for Tm:
     a) Tries the highly accurate Nearest-Neighbor model (Tm_NN).
     b) If that fails, it automatically falls back to the stable GC-content
-       model (Tm_GC), ensuring the script never crashes on this step.
+       model (Tm_GC).
 3.  Performs an "all forward vs. all reverse" comparison, finding all possible
     amplicons that meet the user-defined size criteria.
 4.  Calculates a comprehensive 'optimality_score' for each potential amplicon.
